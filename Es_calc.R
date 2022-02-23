@@ -12,7 +12,7 @@ es_frmlnd <-
   rename(ward = CITY_NAME_, type_07 = type07, type_17 = type2017, 
          yasai_07 = `yasai7.(kg)`, yasai_17 = `yasai17.(kg)`, 
          rice_07 = `rice7.(t)`, rice_17 = `rice17.(t)`) %>% 
-  # ½«Êß²Ë²úÁ¿µ¥Î»×ª»»Îª¶Ö
+  # å°†è”¬èœäº§é‡å•ä½è½¬æ¢ä¸ºå¨
   mutate(yasai_07 = yasai_07 / 1000, yasai_17 = yasai_17 / 1000) %>%
   mutate(cseq_yasai_07 = yasai_07 * (1 + 0.5) * (1 - 0.8), 
          cseq_yasai_17 = yasai_17 * (1 + 0.5) * (1 - 0.8), 
@@ -37,7 +37,7 @@ es_ward <- es_frmlnd %>%
   ungroup()
 write.xlsx(es_ward, "/Users/Kang/Documents/R/KAES/GIS/ProcData/R ES_ward.xlsx")
 
-# ·ÖÎö¸÷ÇøES²îÒì
+# åˆ†æå„åŒºESå·®å¼‚
 plot_es_ward <- vector("list", length = ncol(es_ward) - 1)
 names(plot_es_ward) <- names(es_ward)[-1]
 for (i in names(plot_es_ward)) {
