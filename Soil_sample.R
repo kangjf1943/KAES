@@ -3,43 +3,43 @@ library(dplyr)
 library(showtext)
 showtext_auto()
 
-# ºµµØ²ÉÑùÉè¼Æ ----
-# ²ÉÑùÉè¼ÆÐèÒª¿¼ÂÇÍÁÈÀÀàÐÍºÍÐÐÕþÇø
-# ÏÈ¿´ÍÁÈÀºÍÐÐÕþÇøµÄ×éºÏÓÐ¶àÉÙÖÖ
-frmlnd <- read.xlsx("RawData/GIS ¾©¶¼ÞrµØ_soil.xlsx")
-unique(frmlnd[c("CITY_NAME_", "ÍÁ‰´´ó???")]) %>% nrow()
+# æ—±åœ°é‡‡æ ·è®¾è®¡ ----
+# é‡‡æ ·è®¾è®¡éœ€è¦è€ƒè™‘åœŸå£¤ç±»åž‹å’Œè¡Œæ”¿åŒº
+# å…ˆçœ‹åœŸå£¤å’Œè¡Œæ”¿åŒºçš„ç»„åˆæœ‰å¤šå°‘ç§
+frmlnd <- read.xlsx("RawData/GIS äº¬éƒ½è¾²åœ°_soil.xlsx")
+unique(frmlnd[c("CITY_NAME_", "åœŸå£Œå¤§???")]) %>% nrow()
 
-# ÀàÐÍ¹ý¶à£¬ºÏ²¢²¿·ÖÐÐÕþÇø
+# ç±»åž‹è¿‡å¤šï¼Œåˆå¹¶éƒ¨åˆ†è¡Œæ”¿åŒº
 frmlnd$ward_agg <- frmlnd$CITY_NAME_
 frmlnd$ward_agg[frmlnd$CITY_NAME_ %in% 
-                  c("ÄÏÇø", "ÏÂ¾©Çø", "ÖÐ¾©Çø", "ÉÏ¾©Çø", "–|É½Çø")] <- "ÖÐ²¿"
+                  c("å—åŒº", "ä¸‹äº¬åŒº", "ä¸­äº¬åŒº", "ä¸Šäº¬åŒº", "æ±å±±åŒº")] <- "ä¸­éƒ¨"
 
-# ²ÉÑùÉè¼ÆÐèÒªÂú×ã£º¸÷ÖÖÍÁÈÀÀàÐÍÖÁÉÙÓÐ3¸öÑùµØ£¬¸÷ÇøÖÁÉÙÓÐ3¸öÑùµØ
+# é‡‡æ ·è®¾è®¡éœ€è¦æ»¡è¶³ï¼šå„ç§åœŸå£¤ç±»åž‹è‡³å°‘æœ‰3ä¸ªæ ·åœ°ï¼Œå„åŒºè‡³å°‘æœ‰3ä¸ªæ ·åœ°
 
-# ¿´¸÷ÀàÍÁÈÀÀàÐÍÏÂÓÐ¶àÉÙ¸öÇø
+# çœ‹å„ç±»åœŸå£¤ç±»åž‹ä¸‹æœ‰å¤šå°‘ä¸ªåŒº
 frmlnd_soil <- frmlnd %>% 
-  group_by(`ÍÁ‰´´ó???`, ward_agg) %>%
+  group_by(`åœŸå£Œå¤§???`, ward_agg) %>%
   summarise(n = n()) %>% 
   ungroup() %>% 
   as.data.frame()
 frmlnd_soil
 
-# ¥°¥é¥¤ÍÁ½ö¸²¸Ç2¸öÇø£¬Òò´ËÔÚ·ü¼ûÇø¶àÈ¡Ò»¸öÑùµØ
+# ã‚°ãƒ©ã‚¤åœŸä»…è¦†ç›–2ä¸ªåŒºï¼Œå› æ­¤åœ¨ä¼è§åŒºå¤šå–ä¸€ä¸ªæ ·åœ°
 tarsmp_ha <- frmlnd_soil[c(1, 1, 2), c(1, 2)]
 
 # 
-# Î´¶¨ÁxÍÁÈÀ¸²¸Ç3¸öÇø£¬Òò´ËÈ«²¿ÈëÑ¡
+# æœªå®šç¾©åœŸå£¤è¦†ç›–3ä¸ªåŒºï¼Œå› æ­¤å…¨éƒ¨å…¥é€‰
 tarsmp_ha <- rbind(tarsmp_ha, frmlnd_soil[c(3:5), c(1, 2)])
 
-# ³à»ÆÉ«ÍÁ½ö¸²¸Ç1¸öÇø£¬Òò´ËÔÚ±¾ÇøÑ¡3¸öÑùµØ
+# èµ¤é»„è‰²åœŸä»…è¦†ç›–1ä¸ªåŒºï¼Œå› æ­¤åœ¨æœ¬åŒºé€‰3ä¸ªæ ·åœ°
 tarsmp_ha <- rbind(tarsmp_ha, frmlnd_soil[rep(24, 3), c(1, 2)])
 
-# ²é¿´È«²¿Í³¼ÆÖÐ¸÷ÇøµÄ·Ö²¼
+# æŸ¥çœ‹å…¨éƒ¨ç»Ÿè®¡ä¸­å„åŒºçš„åˆ†å¸ƒ
 table(frmlnd_soil$ward_agg)
 
-# ÖÐ²¿½öÓÐ3¸ö£¬Òò´ËÖÐ²¿»ÒÉ«µÍµØÍÁºÍºÖÉ«µÍµØÍÁµÄÈ«²¿ÈëÑ¡
-# ÓÒ¾©Çø½öÓÐ2¸ö£¬Òò´ËÓÒ¾©ÇøÎ´ÊìÍÁºÍºÖÉ«µÍµØÍÁµÄÈëÑ¡£¬¶øÇÒÒª¼ÓÑ¡Ò»¸öÓÒ¾©Çø£ººÖÉ«µÍµØÍÁÑùµØ½Ï¶à£¬Òò´Ë¼ÓÑ¡¸ÃÀàÐÍ
-# É½¿ÆÇø½öÓÐ2¸ö£¬Òò´ËÉ½¿ÆÇøÎ´ÊìÍÁºÍ»ÒÉ«µÍµØÍÁÈëÑ¡£¬¶øÇÒÒª¼ÓÑ¡Ò»¸öÉ½¿ÆÇø£ºÁ½¸öÍÁÈÀÀàÐÍÊýÁ¿Ïà½ü£¬Ö®ºó¸ù¾ÝÍÁÈÀÀàÐÍ·Ö²¼¼ÓÑ¡
+# ä¸­éƒ¨ä»…æœ‰3ä¸ªï¼Œå› æ­¤ä¸­éƒ¨ç°è‰²ä½Žåœ°åœŸå’Œè¤è‰²ä½Žåœ°åœŸçš„å…¨éƒ¨å…¥é€‰
+# å³äº¬åŒºä»…æœ‰2ä¸ªï¼Œå› æ­¤å³äº¬åŒºæœªç†ŸåœŸå’Œè¤è‰²ä½Žåœ°åœŸçš„å…¥é€‰ï¼Œè€Œä¸”è¦åŠ é€‰ä¸€ä¸ªå³äº¬åŒºï¼šè¤è‰²ä½Žåœ°åœŸæ ·åœ°è¾ƒå¤šï¼Œå› æ­¤åŠ é€‰è¯¥ç±»åž‹
+# å±±ç§‘åŒºä»…æœ‰2ä¸ªï¼Œå› æ­¤å±±ç§‘åŒºæœªç†ŸåœŸå’Œç°è‰²ä½Žåœ°åœŸå…¥é€‰ï¼Œè€Œä¸”è¦åŠ é€‰ä¸€ä¸ªå±±ç§‘åŒºï¼šä¸¤ä¸ªåœŸå£¤ç±»åž‹æ•°é‡ç›¸è¿‘ï¼Œä¹‹åŽæ ¹æ®åœŸå£¤ç±»åž‹åˆ†å¸ƒåŠ é€‰
 tarsmp_ha <- rbind(
   tarsmp_ha, 
   frmlnd_soil[c(12, 18), c(1, 2)], 
@@ -47,47 +47,47 @@ tarsmp_ha <- rbind(
   frmlnd_soil[c(9, 15), c(1, 2)]
 )
 
-# ²é¿´²»×ãµÄÍÁÈÀºÍÇøµÄºòÑ¡
+# æŸ¥çœ‹ä¸è¶³çš„åœŸå£¤å’ŒåŒºçš„å€™é€‰
 frmlnd_soil[which(
-  frmlnd_soil$ward_agg %in% c("·üÒŠÇø", "±±Çø", "É½¿ÆÇø", "×ó¾©Çø") & 
-    frmlnd_soil$`ÍÁ‰´´ó???` %in% c("Î´ÊìÍÁ", "»ÒÉ«µÍµØÍÁ")), ]
+  frmlnd_soil$ward_agg %in% c("ä¼è¦‹åŒº", "åŒ—åŒº", "å±±ç§‘åŒº", "å·¦äº¬åŒº") & 
+    frmlnd_soil$`åœŸå£Œå¤§???` %in% c("æœªç†ŸåœŸ", "ç°è‰²ä½Žåœ°åœŸ")), ]
 
-# É½¿ÆÇø²»×ã1¸öÑùµØ£¬¼ÓÑ¡ÆäÎ´ÊìÍÁ
-# ³ýÁËÉ½¿ÆÇø£¬Î´ÊìÍÁºÍ»ÒÉ«µÍµØÍÁ°üº¬µÄÇø¶¼ÊÇ·ü¼ûÇø¡¢±±Çø¡¢×ó¾©Çø£¬Òò´ËÈÎÑ¡·ü¼ûÇø1¸öÎª»ÒÉ«µÍµØÍÁ£¬×ó¾©Çø2¸ö£¬±±Çø2¸ö
+# å±±ç§‘åŒºä¸è¶³1ä¸ªæ ·åœ°ï¼ŒåŠ é€‰å…¶æœªç†ŸåœŸ
+# é™¤äº†å±±ç§‘åŒºï¼Œæœªç†ŸåœŸå’Œç°è‰²ä½Žåœ°åœŸåŒ…å«çš„åŒºéƒ½æ˜¯ä¼è§åŒºã€åŒ—åŒºã€å·¦äº¬åŒºï¼Œå› æ­¤ä»»é€‰ä¼è§åŒº1ä¸ªä¸ºç°è‰²ä½Žåœ°åœŸï¼Œå·¦äº¬åŒº2ä¸ªï¼ŒåŒ—åŒº2ä¸ª
 tarsmp_ha <- rbind(tarsmp_ha, frmlnd_soil[9, c(1, 2)])
 tarsmp_ha <- rbind(
   tarsmp_ha, 
   frmlnd_soil[13, c(1, 2)], 
   frmlnd_soil[c(10, 16), c(1, 2)], 
   frmlnd_soil[c(7, 14), c(1, 2)]
-) %>% arrange(`ÍÁ‰´´ó???`)
+) %>% arrange(`åœŸå£Œå¤§???`)
 tarsmp_ha
 
-# ²é¿´½á¹û·Ö²¼
+# æŸ¥çœ‹ç»“æžœåˆ†å¸ƒ
 table(tarsmp_ha$ward_agg) %>% plot(las = 2)
-table(tarsmp_ha$`ÍÁ‰´´ó???`) %>% plot(las = 2)
+table(tarsmp_ha$`åœŸå£Œå¤§???`) %>% plot(las = 2)
 
-# ¹²ÓÐ22¸öÑùµØ
+# å…±æœ‰22ä¸ªæ ·åœ°
 nrow(tarsmp_ha)
-# Ã¿¸öÑùµØ3²ãÍÁÑù£¬¹²ÐèÒª66¸öÍÁÑù
+# æ¯ä¸ªæ ·åœ°3å±‚åœŸæ ·ï¼Œå…±éœ€è¦66ä¸ªåœŸæ ·
 
-# ºµµØÑùµØÑ¡Ôñ ----
-# º¯Êý£º´Ó¹æ¶¨ÍÁÈÀ´óÀàºÍÐÐÕþÇøÖÐËæ»úÈ¡Ñù
+# æ—±åœ°æ ·åœ°é€‰æ‹© ----
+# å‡½æ•°ï¼šä»Žè§„å®šåœŸå£¤å¤§ç±»å’Œè¡Œæ”¿åŒºä¸­éšæœºå–æ ·
 fun_sample <- function(name_soil, name_ward) {
-  # Ñ¡È¡·ûºÏÌõ¼þµÄ×Ó¼¯
+  # é€‰å–ç¬¦åˆæ¡ä»¶çš„å­é›†
   frmlnd_sub <- frmlnd[which(
-    frmlnd$`ÍÁ‰´´ó???` == name_soil & frmlnd$ward_agg == name_ward &
+    frmlnd$`åœŸå£Œå¤§???` == name_soil & frmlnd$ward_agg == name_ward &
       frmlnd$type == "ha"), ]
-  # ÓÐÐ©¿çÇøµÄÅ©µØÓÐÁ½¸öid£¬ÐèÒªÈ¥³ýÕâÐ©Å©µØ
+  # æœ‰äº›è·¨åŒºçš„å†œåœ°æœ‰ä¸¤ä¸ªidï¼Œéœ€è¦åŽ»é™¤è¿™äº›å†œåœ°
   dupid <- frmlnd_sub$id[which(duplicated(frmlnd_sub$id) == TRUE)]
   frmlnd_sub <- frmlnd_sub[which(!frmlnd_sub$id %in% dupid), ]
-  # ÌáÈ¡·ûºÏÌõ¼þµÄÐÐÊý
+  # æå–ç¬¦åˆæ¡ä»¶çš„è¡Œæ•°
   set.seed(1234)
   output <- sample(rownames(frmlnd_sub), 1)
   return(output)
 }
 
-# ½¨Á¢¿ÕÏòÁ¿ÒÔ´æ´¢½á¹û
+# å»ºç«‹ç©ºå‘é‡ä»¥å­˜å‚¨ç»“æžœ
 tarsmp_ha_num <- character()
 
 for (i in 1:nrow(tarsmp_ha)) {
@@ -102,16 +102,16 @@ tarsmp_ha <- frmlnd[tarsmp_ha_num, ] %>%
 
 write.xlsx(tarsmp_ha, "/Users/Kang/Documents/R/KAES/GIS/ProcData/R tarsmp_ha.xlsx")
 
-# Ë®ÌïÑùµØÑ¡Ôñ ----
+# æ°´ç”°æ ·åœ°é€‰æ‹© ----
 ta_alt <- read.xlsx("RawData/GIS Kyoto_soil_smpalt.xlsx")
-# È¥³ýÖØ¸´Ïî
+# åŽ»é™¤é‡å¤é¡¹
 dupid <- ta_alt$id[which(duplicated(ta_alt$id) == TRUE)]
 ta_alt <- ta_alt[which(!ta_alt$id %in% dupid), ]
 
-# ÔÚÃ¿¸ö»º³åÇøÄÚÑ¡ÔñÒ»¸öÑùµØ
+# åœ¨æ¯ä¸ªç¼“å†²åŒºå†…é€‰æ‹©ä¸€ä¸ªæ ·åœ°
 tarsmp_ta <- 
   ta_alt %>% 
-  # ½öÑ¡ÔñË®Ìï
+  # ä»…é€‰æ‹©æ°´ç”°
   subset(type == "ta") %>% 
   group_by(buff_id) %>%
   slice_sample(n = 1) %>% 
@@ -119,13 +119,11 @@ tarsmp_ta <-
   mutate(sample = TRUE) %>% 
   select(id, sample, buff_id)
 dim(tarsmp_ta)
-# ÓÐ4¿éÄ¿±êºµµØÖÜ±ßÃ»ÓÐË®Ìï
+# æœ‰4å—ç›®æ ‡æ—±åœ°å‘¨è¾¹æ²¡æœ‰æ°´ç”°
 unique(ta_alt$buff_id[!ta_alt$buff_id %in% tarsmp_ta$buff_id])
 
-# µ¼³öÄ¿±êË®ÌïµÄÐÅÏ¢
+# å¯¼å‡ºç›®æ ‡æ°´ç”°çš„ä¿¡æ¯
 write.xlsx(
   tarsmp_ta, "/Users/Kang/Documents/R/KAES/GIS/ProcData/R tarsmp_ta.xlsx")
 
-# ÊÖ¶¯ÔÚGISÉÏÑ¡ÔñÕâ4¿éºµµØÖÜ±ßµÄË®Ìï
-
-
+# æ‰‹åŠ¨åœ¨GISä¸Šé€‰æ‹©è¿™4å—æ—±åœ°å‘¨è¾¹çš„æ°´ç”°
