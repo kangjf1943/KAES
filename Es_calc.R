@@ -192,26 +192,28 @@ es.frmlnd.cool.17 <-
 
 # Sum to ward level ----
 # 计算各区生态系统服务量
-SumEs <- function(es.prod.cseq, es.nfix) {
-  es_ward <- es.prod.cseq %>% 
+SumEs <- function(es.prod.cseq, es.cool, es.nfix) {
+  es_ward <- es.prod.cseq %>%
+    left_join(es.cool, by = "plotid") %>% 
     group_by(city_name) %>% 
     summarise(
       area = sum(area), 
       rice = sum(rice), 
       veg = sum(veg), 
-      cseq = sum(cseq)) %>% 
+      cseq = sum(cseq), 
+      cool = sum(cool_eff)) %>% 
     ungroup() %>% 
     # 合并固氮量结果
     left_join(es.nfix[c("ward", "nfix")], by = c("city_name" = "ward"))
   return(es_ward)
 }
 
-es_ward_07 <- SumEs(es.frmlnd.prod.07, es_nfix_07)
-es_ward_17 <- SumEs(es.frmlnd.prod.17, es_nfix_17)
+es_ward_07 <- SumEs(es.frmlnd.prod.07, es.frmlnd.cool.07, es_nfix_07)
+es_ward_17 <- SumEs(es.frmlnd.prod.17, es.frmlnd.cool.17, es_nfix_17)
 
 # bug：此处应该补一个将名字重命名为驼峰式写法之后再输出的函数
-write.xlsx(es_ward_07, "/Users/Kang/Documents/R/KAES/GProcData/Es_ward_07.xlsx")
-write.xlsx(es_ward_07, "/Users/Kang/Documents/R/KAES/GProcData/Es_ward_17.xlsx")
+write.csv(es_ward_07, "/Users/Kang/Documents/R/KAES/GProcData/Es_ward_07.csv")
+write.csv(es_ward_07, "/Users/Kang/Documents/R/KAES/GProcData/Es_ward_17.csv")
 
 # 分析各区ES差异
 plot_es_ward <- vector("list", length = ncol(es_ward) - 1)
