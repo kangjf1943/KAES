@@ -200,19 +200,37 @@ ward.nfix.07 <- GetNFix(tot.ward.ha.area.07, ward.ha.area.07)
 ward.nfix.17 <- GetNFix(tot.ward.ha.area.17, ward.ha.area.17)
 
 # Cooling effect ---- 
-frmlnd.cool.07 <- 
-  read.shapefile("GProcData/Kyoto_prod_green_space_cool_2007") %>% 
-  .$dbf %>% .$dbf %>% as_tibble() %>% 
-  rename_with(tolower) %>% 
-  rename(cool = cool_eff) %>% 
-  select(plotid, cool)
+frmlnd.area = frmlnd.area.07
 
-frmlnd.cool.17 <- 
-  read.shapefile("GProcData/Kyoto_prod_green_space_cool_2017") %>% 
-  .$dbf %>% .$dbf %>% as_tibble() %>% 
-  rename_with(tolower) %>% 
-  rename(cool = cool_eff) %>% 
-  select(plotid, cool)
+# 函数：计算各地块降温效应
+# 参数：
+# frmlnd.area：各地块面积数据
+GetCool <- function(frmlnd.area) {
+  # 计算水田降温效应
+  frmlnd.cool.ta <- frmlnd.area %>% 
+    # 提取水田部分地块
+    subset(type == "ta") %>% 
+    # 加入降温效应得分
+    mutate(cool_score = ifelse(area < 20000, 20, 75)) %>% 
+    mutate(cool = cool_score * area)
+  
+  # 计算旱地降温效应
+  frmlnd.cool.ha <- frmlnd.area %>% 
+    # 提取水田部分地块
+    subset(type == "ha") %>% 
+    # 加入降温效应得分
+    mutate(cool_score = ifelse(area < 20000, 19, 69)) %>% 
+    mutate(cool = cool_score * area)
+  
+  # 合并水田和旱地的结果
+  frmlnd.cool <- rbind(frmlnd.cool.ta, frmlnd.cool.ha) %>% 
+    select(plotid, cool)
+  
+  return(frmlnd.cool)
+}
+
+frmlnd.cool.07 <- GetCool(frmlnd.area = frmlnd.area.07)
+frmlnd.cool.17 <- GetCool(frmlnd.area = frmlnd.area.17)
 
 # Sum to ward level ----
 # 计算各区生态系统服务量
@@ -265,13 +283,13 @@ WriteCamelCsv <- function(ward.es, file.name) {
 # 注意，固氮服务只有区粒度的结果，而无地块粒度的结果，因为不知道哪些地块种的是豆
 # 科植物，因此无法将结果分配到地块
 frmlnd.prod.cseq.07 %>% left_join(frmlnd.cool.07, by = "plotid") %>% 
-  WriteCamelCsv(file.name = "GProcData/Frmlnd_es_07.csv")
+  WriteCamelCsv(file.name = "GProcData/Frmlnd_es_2007.csv")
 frmlnd.prod.cseq.17 %>% left_join(frmlnd.cool.17, by = "plotid") %>% 
-  WriteCamelCsv(file.name = "GProcData/Frmlnd_es_17.csv")
+  WriteCamelCsv(file.name = "GProcData/Frmlnd_es_2017.csv")
 
 # 导出各区生态系统服务
-WriteCamelCsv(ward.es = ward.es.07, file.name = "GProcData/Ward_es_07.csv")
-WriteCamelCsv(ward.es = ward.es.17, file.name = "GProcData/Ward_es_17.csv")
+WriteCamelCsv(ward.es = ward.es.07, file.name = "GProcData/Ward_es_2007.csv")
+WriteCamelCsv(ward.es = ward.es.17, file.name = "GProcData/Ward_es_2017.csv")
 
 # Visualization ----
 # 分析各区ES差异
