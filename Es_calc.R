@@ -1,4 +1,5 @@
 library(openxlsx)
+library(shapefiles)
 library(readxl)
 library(dplyr)
 library(ggplot2)
@@ -7,22 +8,63 @@ library(showtext)
 showtext_auto()
 
 # Production and carbon seq ----
-es_frmlnd <- 
-  read.xlsx("/Users/Kang/Documents/R/KAES/GProcData/Production_Cui.xlsx") %>%
-  select(id, CITY_NAME_, `Area(m2)`, type07, type2017, 
-         `yasai7.(kg)`, `yasai17.(kg)`, `rice7.(t)`, `rice17.(t)`) %>% 
-  rename(ward = CITY_NAME_, area = `Area(m2)`, 
-         type_07 = type07, type_17 = type2017, 
-         yasai_07 = `yasai7.(kg)`, yasai_17 = `yasai17.(kg)`, 
-         rice_07 = `rice7.(t)`, rice_17 = `rice17.(t)`) %>% 
-  # 将蔬菜产量单位转换为吨
-  mutate(yasai_07 = yasai_07 / 1000, yasai_17 = yasai_17 / 1000) %>%
-  mutate(cseq_yasai_07 = yasai_07 * (1 + 0.5) * (1 - 0.8), 
-         cseq_yasai_17 = yasai_17 * (1 + 0.5) * (1 - 0.8), 
-         cseq_rice_07 = rice_07 * (1 + 1.4) * (1 - 0.1), 
-         cseq_rice_17 = rice_17 * (1 + 1.4) * (1 - 0.1)) %>% 
-  mutate(cseq_07 = cseq_yasai_07 + cseq_rice_07, 
-         cseq_17 = cseq_yasai_17 + cseq_rice_17)
+# 读取各区单位面积产量
+frmlnd.prodeff <- 
+  read.xlsx("RRawData/Rich_veg_production_per_area_by_ward.xlsx") %>% 
+  as_tibble() %>% 
+  # 将稻米产量单位由t/10a转化为t/平方米
+  mutate(rice_07 = rice_07 / (10 * 100), 
+         rice_17 = rice_17 / (10 * 100)) %>% 
+  # 将蔬菜产量单位由kg/10a转化为t/平方米
+  mutate(veg_07 = (veg_07 / 1000) / (10 * 100), 
+         veg_17 = (veg_17 / 1000) / (10 * 100))
+frmlnd.prodeff.07 <- frmlnd.prodeff %>% 
+  select(ward, rice_07, veg_07) %>% 
+  rename(rice = rice_07, veg = veg_07)
+frmlnd.prodeff.17 <- frmlnd.prodeff %>% 
+  select(ward, rice_17, veg_17) %>% 
+  rename(rice = rice_17, veg = veg_17)
+
+# 读取各区各地块面积
+frmlnd.area.07 <- read.shapefile("GProcData/Kyoto_prod_green_space_2007") %>%
+  .$dbf %>% .$dbf %>% as_tibble() %>% 
+  select(PlotId, Type, CITY_NAME, Area) %>% 
+  rename_with(tolower)
+
+frmlnd.area.17 <- read.shapefile("GProcData/Kyoto_prod_green_space_2017") %>%
+  .$dbf %>% .$dbf %>% as_tibble() %>% 
+  select(PlotId, Type, CITY_NAME, Area) %>% 
+  rename_with(tolower)
+
+# 函数：计算各地块稻米和蔬菜产量
+GetProd <- function(x.prodeff, x.area) {
+  # 计算大米生产量
+  riceprod <- subset(x.area, type == "ta") %>% 
+    left_join(x.prodeff, by = c("city_name" = "ward")) %>% 
+    mutate(rice = rice * area) %>% 
+    mutate(veg = 0)
+  # 计算蔬菜产量
+  vegprod <- subset(x.area, type == "ha") %>% 
+    left_join(x.prodeff, by = c("city_name" = "ward")) %>% 
+    mutate(veg = veg * area) %>% 
+    mutate(rice = 0)
+  # 合并稻米和蔬菜产量
+  prod <- rbind(riceprod, vegprod)
+  
+  # 加入计算碳吸收
+  prod.cseq <- prod %>% 
+    mutate(cseq.veg = veg * (1 + 0.5) * (1 - 0.8), 
+           cseq.rice = rice * (1 + 1.4) * (1 - 0.1)) %>% 
+    mutate(cseq = cseq.veg + cseq.rice) %>% 
+    select(plotid, type, city_name, area, rice, veg, cseq)
+  
+  return(prod.cseq)
+}
+
+es.frmlnd.prod.07 <- 
+  GetProd(frmlnd.prodeff.07, frmlnd.area.07)
+es.frmlnd.prod.17 <- 
+  GetProd(frmlnd.prodeff.17, frmlnd.area.17)
 
 # N fix ----
 # 思路：
@@ -77,14 +119,14 @@ all_frmlnd_17[2:8] <- apply(all_frmlnd_17[2:8], 2, function(x) {x*100})
 # 问题：但是右京区反而增加了？
 
 # 汇总计算2007年和2017年各区生产绿地旱地面积
-es_dry_land_07 <- es_frmlnd %>% 
-  subset(type_07 == "ha") %>%
-  group_by(ward) %>% 
+es_dry_land_07 <- frmlnd.area.07 %>% 
+  subset(type == "ha") %>%
+  group_by(city_name) %>% 
   summarise(area = sum(area))
 
-es_dry_land_17 <- es_frmlnd %>% 
-  subset(type_17 == "ha") %>%
-  group_by(ward) %>% 
+es_dry_land_17 <- frmlnd.area.17 %>% 
+  subset(type == "ha") %>%
+  group_by(city_name) %>% 
   summarise(area = sum(area))
 
 # 读取豆科作物产量
