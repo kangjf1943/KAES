@@ -178,24 +178,27 @@ es_nfix_07 <- GetNFix(all_frmlnd_07, es_dry_land_07)
 es_nfix_17 <- GetNFix(all_frmlnd_17, es_dry_land_17)
 
 # 计算各区生态系统服务量
-es_ward <- es_frmlnd %>% 
-  group_by(ward) %>% 
-  summarise(
-    yasai_07 = sum(yasai_07), yasai_17 = sum(yasai_17), 
-    yasai_chg = yasai_17 - yasai_07, 
-    rice_07 = sum(rice_07), rice_17 = sum(rice_17), 
-    rice_chg = rice_17 - rice_07, 
-    cseq_yasai_07 = sum(cseq_yasai_07), cseq_yasai_17 = sum(cseq_yasai_17), 
-    cseq_yasai_chg = cseq_yasai_17 - cseq_yasai_07, 
-    cseq_rice_07 = sum(cseq_rice_07), cseq_rice_17 = sum(cseq_rice_17), 
-    cseq_rice_chg = cseq_rice_17 - cseq_rice_07, 
-    cseq_07 = sum(cseq_07), cseq_17 = sum(cseq_17), 
-    cseq_chg = cseq_17 - cseq_07) %>% 
-  ungroup() %>% 
-  # 合并2007年和2017年固氮量结果
-  left_join(es_nfix[c("ward", "nfix_07", "nfix_17")], by = "ward") %>%
-  mutate(nfix_chg = nfix_17 - nfix_07)
-write.xlsx(es_ward, "/Users/Kang/Documents/R/KAES/GProcData/R ES_ward.xlsx")
+SumEs <- function(es.prod.cseq, es.nfix) {
+  es_ward <- es.prod.cseq %>% 
+    group_by(city_name) %>% 
+    summarise(
+      area = sum(area), 
+      rice = sum(rice), 
+      veg = sum(veg), 
+      cseq = sum(cseq)) %>% 
+    ungroup() %>% 
+    # 合并固氮量结果
+    left_join(es.nfix[c("ward", "nfix")], by = c("city_name" = "ward"))
+  return(es_ward)
+}
+
+
+es_ward_07 <- SumEs(es.frmlnd.prod.07, es_nfix_07)
+es_ward_17 <- SumEs(es.frmlnd.prod.17, es_nfix_17)
+
+# bug：此处应该补一个将名字重命名为驼峰式写法之后再输出的函数
+write.xlsx(es_ward_07, "/Users/Kang/Documents/R/KAES/GProcData/Es_ward_07.xlsx")
+write.xlsx(es_ward_07, "/Users/Kang/Documents/R/KAES/GProcData/Es_ward_17.xlsx")
 
 # 分析各区ES差异
 plot_es_ward <- vector("list", length = ncol(es_ward) - 1)
