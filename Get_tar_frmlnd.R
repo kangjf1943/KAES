@@ -30,9 +30,6 @@ frmlnd.filter.2007 <- frmlnd.filter.2007 %>%
 # 问题：而且保留下来的数据中“ChgYr”的值各式各样，所以“ChgYr”列到底是什么意思呢？
 # “Type”为“0”不是表示类型不变吗？
 table(frmlnd.filter.2007$ChgYr)
-# 加入新列，以表示该状态的对应年份
-frmlnd.filter.2007 <- frmlnd.filter.2007 %>% 
-  mutate(Yr = 2007)
 
 # 2017年的目标地块判断标准：类型为水田或旱地，变化类型则包括三类，即未变化、发生
 # 水田到旱地的转化或者反向的转化、新增的农田
@@ -43,9 +40,19 @@ frmlnd.filter.2017 <- frmlnd.filter %>%
 frmlnd.filter.2017[!is.na(frmlnd.filter.2017$AfterChg), ]
 # 姑且忽略“AfteChg”为“9058”的行，删除值为“道路”的行
 frmlnd.filter.2017 <- frmlnd.filter.2017 %>% 
-  subset(is.na(AfterChg)) %>% 
-  # 加入新列，以表示该状态的对应年份
-  mutate(Yr = 2017)
+  subset(is.na(AfterChg))
+# 将Type改成2017年的地块类型
+frmlnd.filter.2017$Type_new <- as.character(frmlnd.filter.2017$Type)
+frmlnd.filter.2017$Type_new[which(frmlnd.filter.2017$Chg == 2 & 
+                                frmlnd.filter.2017$Type == "ta")] <- "to_ha"
+frmlnd.filter.2017$Type_new[which(frmlnd.filter.2017$Chg == 2 & 
+                                frmlnd.filter.2017$Type == "ha")] <- "ta"
+frmlnd.filter.2017$Type_new[which(frmlnd.filter.2017$Type_new == "to_ha")] <- "ha"
+table(frmlnd.filter.2017$Type)
+table(frmlnd.filter.2017$Type_new)  
+frmlnd.filter.2017 <- frmlnd.filter.2017 %>% 
+  select(-Type) %>% 
+  rename(Type = Type_new)
 
 # 将筛选后的两个属性表放回GIS文件夹，之后通过Join attributes by field value生成
 # 2007年和2017年的目标地块多边形图层
