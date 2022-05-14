@@ -158,25 +158,24 @@ all_legume_nfix <- all_legume_nfix %>%
   ungroup()
 
 # 合并豆科总固氮量和2007和2017年各区推算旱地总面积数据和生产绿地旱地的面积
+# 函数：计算固氮量
+GetNFix <- function(all_frmlnd, es_dry_land) {
+  es_nfix <- all_frmlnd[c("ward", "total_dry_land")] %>% 
+    left_join(es_dry_land, by = c("ward" = "city_name")) %>% 
+    # 计算生产绿地旱地和总体旱地面积的比例
+    mutate(rate = area / total_dry_land) %>% 
+    left_join(all_legume_nfix, by = "ward") %>% 
+    # 计算2007年和2017年生产绿地的固氮量
+    mutate(nfix = nfix * rate)
+  
+  # 替换NaN值
+  es_nfix$nfix[is.nan(es_nfix$nfix)] <- 0
+  
+  return(es_nfix)
+}
 # 并且推算生产绿地的固氮量
-es_nfix <- 
-  merge(all_frmlnd_07[c("ward", "total_dry_land")], 
-        all_frmlnd_17[c("ward", "total_dry_land")], by = "ward") %>% 
-  rename(total_dry_land_07 = total_dry_land.x, 
-         total_dry_land_17 = total_dry_land.y) %>% 
-  left_join(es_dry_land_07, by = "ward") %>% 
-  left_join(es_dry_land_17, by = "ward") %>% 
-  rename(es_dry_land_07 = "area.x", 
-         es_dry_land_17 = "area.y") %>% 
-  # 计算2007和2017年生产绿地旱地和总体旱地面积的比例
-  mutate(rate_07 = es_dry_land_07 / total_dry_land_07, 
-         rate_17 = es_dry_land_17 / total_dry_land_17) %>% 
-  left_join(all_legume_nfix, by = "ward") %>% 
-  # 计算2007年和2017年生产绿地的固氮量
-  mutate(nfix_07 = nfix * rate_07, 
-         nfix_17 = nfix * rate_17)
-# 替换NaN值
-es_nfix$nfix_17[is.nan(es_nfix$nfix_17)] <- 0
+es_nfix_07 <- GetNFix(all_frmlnd_07, es_dry_land_07)
+es_nfix_17 <- GetNFix(all_frmlnd_17, es_dry_land_17)
 
 # 计算各区生态系统服务量
 es_ward <- es_frmlnd %>% 
