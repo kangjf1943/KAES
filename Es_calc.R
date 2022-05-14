@@ -7,64 +7,81 @@ library(patchwork)
 library(showtext)
 showtext_auto()
 
-# Production and carbon seq ----
+# Production and carbon sequestration ----
 # 读取各区单位面积产量
-frmlnd.prodeff <- 
+prodeff <- 
   read.xlsx("RRawData/Rich_veg_production_per_area_by_ward.xlsx") %>% 
   as_tibble() %>% 
-  # 将稻米产量单位由t/10a转化为t/平方米
+  # 将稻米产量单位由吨/10a转化为吨/平方米
   mutate(rice_07 = rice_07 / (10 * 100), 
          rice_17 = rice_17 / (10 * 100)) %>% 
-  # 将蔬菜产量单位由kg/10a转化为t/平方米
+  # 将蔬菜产量单位由千克/10a转化为吨/平方米
   mutate(veg_07 = (veg_07 / 1000) / (10 * 100), 
          veg_17 = (veg_17 / 1000) / (10 * 100))
-frmlnd.prodeff.07 <- frmlnd.prodeff %>% 
+
+# 提取2007年各区单位面积产量
+prodeff.07 <- prodeff %>% 
   select(ward, rice_07, veg_07) %>% 
   rename(rice = rice_07, veg = veg_07)
-frmlnd.prodeff.17 <- frmlnd.prodeff %>% 
+
+# 提取2017年各区单位面积产量
+prodeff.17 <- prodeff %>% 
   select(ward, rice_17, veg_17) %>% 
   rename(rice = rice_17, veg = veg_17)
 
 # 读取各区各地块面积
 frmlnd.area.07 <- read.shapefile("GProcData/Kyoto_prod_green_space_2007") %>%
   .$dbf %>% .$dbf %>% as_tibble() %>% 
-  select(PlotId, Type, CITY_NAME, Area) %>% 
-  rename_with(tolower)
+  rename_with(tolower) %>% 
+  rename(ward = city_name) %>% 
+  select(plotid, type, ward, area)
 
 frmlnd.area.17 <- read.shapefile("GProcData/Kyoto_prod_green_space_2017") %>%
   .$dbf %>% .$dbf %>% as_tibble() %>% 
-  select(PlotId, Type, CITY_NAME, Area) %>% 
-  rename_with(tolower)
+  rename_with(tolower) %>% 
+  rename(ward = city_name) %>%
+  select(plotid, type, ward, area)
 
 # 函数：计算各地块稻米和蔬菜产量
-GetProd <- function(x.prodeff, x.area) {
+# 参数：
+# x.prodeff：单位面积产量数据框
+# x.area：各地块面积
+GetProdCseq <- function(x.prodeff, x.area) {
   # 计算大米生产量
-  riceprod <- subset(x.area, type == "ta") %>% 
-    left_join(x.prodeff, by = c("city_name" = "ward")) %>% 
-    mutate(rice = rice * area) %>% 
-    mutate(veg = 0)
+  riceprod <- 
+    # 筛选出水田地块
+    subset(x.area, type == "ta") %>% 
+    # 加入单位面积产量数据
+    left_join(x.prodeff, by = "ward") %>% 
+    # 水田只生产稻米，故计算稻米产量，而蔬菜产量等于0
+    mutate(rice = rice * area, veg = 0)
+  
   # 计算蔬菜产量
+  # 和上面类似地，筛选出旱地地块，计算蔬菜产量，而稻米产量等于0
   vegprod <- subset(x.area, type == "ha") %>% 
-    left_join(x.prodeff, by = c("city_name" = "ward")) %>% 
-    mutate(veg = veg * area) %>% 
-    mutate(rice = 0)
+    left_join(x.prodeff, by = "ward") %>% 
+    mutate(veg = veg * area, rice = 0) 
+  
   # 合并稻米和蔬菜产量
   prod <- rbind(riceprod, vegprod)
   
-  # 加入计算碳吸收
+  # 在此基础上计算固碳服务
   prod.cseq <- prod %>% 
-    mutate(cseq.veg = veg * (1 + 0.5) * (1 - 0.8), 
-           cseq.rice = rice * (1 + 1.4) * (1 - 0.1)) %>% 
+    # 计算稻米和蔬菜的固碳量并加和
+    mutate(cseq.rice = rice * (1 + 1.4) * (1 - 0.1), 
+           cseq.veg = veg * (1 + 0.5) * (1 - 0.8)) %>% 
     mutate(cseq = cseq.veg + cseq.rice) %>% 
-    select(plotid, type, city_name, area, rice, veg, cseq)
+    select(plotid, type, ward, area, rice, veg, cseq)
   
+  # 返回结果
   return(prod.cseq)
 }
 
+# 计算2007年和2017年的生产服务和固碳服务
 es.frmlnd.prod.07 <- 
-  GetProd(frmlnd.prodeff.07, frmlnd.area.07)
+  GetProdCseq(prodeff.07, frmlnd.area.07)
 es.frmlnd.prod.17 <- 
-  GetProd(frmlnd.prodeff.17, frmlnd.area.17)
+  GetProdCseq(prodeff.17, frmlnd.area.17)
 
 # N fix ----
 # 思路：
