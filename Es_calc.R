@@ -177,6 +177,20 @@ GetNFix <- function(all_frmlnd, es_dry_land) {
 es_nfix_07 <- GetNFix(all_frmlnd_07, es_dry_land_07)
 es_nfix_17 <- GetNFix(all_frmlnd_17, es_dry_land_17)
 
+# Cooling effect ---- 
+es.frmlnd.cool.07 <- 
+  read.shapefile("GProcData/Kyoto_prod_green_space_cool_2007") %>% 
+  .$dbf %>% .$dbf %>% as_tibble() %>% 
+  rename_with(tolower) %>% 
+  select(plotid, cool_eff)
+
+es.frmlnd.cool.17 <- 
+  read.shapefile("GProcData/Kyoto_prod_green_space_cool_2017") %>% 
+  .$dbf %>% .$dbf %>% as_tibble() %>% 
+  rename_with(tolower) %>% 
+  select(plotid, cool_eff)
+
+# Sum to ward level ----
 # 计算各区生态系统服务量
 SumEs <- function(es.prod.cseq, es.nfix) {
   es_ward <- es.prod.cseq %>% 
@@ -191,7 +205,6 @@ SumEs <- function(es.prod.cseq, es.nfix) {
     left_join(es.nfix[c("ward", "nfix")], by = c("city_name" = "ward"))
   return(es_ward)
 }
-
 
 es_ward_07 <- SumEs(es.frmlnd.prod.07, es_nfix_07)
 es_ward_17 <- SumEs(es.frmlnd.prod.17, es_nfix_17)
