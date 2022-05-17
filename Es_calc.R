@@ -123,13 +123,15 @@ GetTotHa <- function(x) {
 }
 
 # 计算全市旱地面积
-# 计算2007年的全市旱地面积，单位为公顷
-tot.ward.ha.area.07 <- GetTotHa("RRawData/Kyoto_all_farmland_area_2007.xls") %>% 
+tot.ward.ha.area.07 <- 
+  # 读取2007年的全市旱地面积，单位为公顷
+  GetTotHa("RRawData/Kyoto_all_farmland_area_2007.xls") %>% 
   # 将单位转化为平方米
   mutate(tot_ha_area = tot_ha_area * 10000)
 
-# 计算2017年的全市旱地面积，单位为100平方米
-tot.ward.ha.area.17 <- GetTotHa("RRawData/Kyoto_all_farmland_area_2017.xlsx") %>% 
+tot.ward.ha.area.17 <- 
+  # 读取2017年的全市旱地面积，单位为100平方米
+  GetTotHa("RRawData/Kyoto_all_farmland_area_2017.xlsx") %>% 
   # 将单位转化为平方米
   mutate(tot_ha_area = tot_ha_area * 100)
 
