@@ -204,8 +204,6 @@ ward.nfix.07 <- GetNFix(tot.ward.ha.area.07, ward.ha.area.07)
 ward.nfix.17 <- GetNFix(tot.ward.ha.area.17, ward.ha.area.17)
 
 # Cooling effect ---- 
-frmlnd.area = frmlnd.area.07
-
 # 函数：计算各地块降温效应
 # 参数：
 # frmlnd.area：各地块面积数据
