@@ -125,7 +125,7 @@ GetTotHa <- function(x) {
   return(frmlnd.type.area)
 }
 
-# 计算全市旱地面积
+# 计算全市旱地面积：结果单位为平方米
 tot.ward.ha.area.07 <- 
   # 读取2007年的全市旱地面积，单位为公顷
   GetTotHa("RRawData/Kyoto_all_farmland_area_2007.xls") %>% 
@@ -158,6 +158,7 @@ tot.ward.nfix <-
   # 基于文献提取各种豆科植物单位面积固氮量
   # 采用Herridge et al. 2008文献中
   # Table 5的Calculated from Table 4 (kg N/ha/year)列的数据
+  # 各类豆科作物的日文-英文对应关系为：
   # 実えんどう = pea
   # さやえんどう = Other pulses
   # えだまめ = Other pulses
@@ -168,14 +169,12 @@ tot.ward.nfix <-
     species == "えだまめ" ~ 41, 
     species == "さやいんげん" ~ 23
   )) %>% 
-  # 整理并转化area_ha列数据类型
-  mutate(area_ha = as.numeric(gsub("-", 0, area_ha))) %>% 
   # 替换旱地面积和产量为NA的值
   mutate(area_ha = ifelse(is.na(area_ha), 0, area_ha), 
          yield = ifelse(is.na(yield), 0, yield)) %>% 
-  # 计算固氮量，单位为：千克N
+  # 计算固氮量，结果单位为：千克氮每年
   mutate(nfix = nfix_rate * area_ha) %>% 
-  # 汇总计算各区总量
+  # 汇总计算各区总固氮量，结果单位为：千克氮每年
   group_by(ward) %>% 
   summarise(nfix = sum(nfix)) %>% 
   ungroup()
@@ -200,7 +199,7 @@ GetNFix <- function(tot.ward.ha.area, ward.ha.area) {
   return(ward.nfix)
 }
 
-# 并且推算生产绿地的固氮量
+# 推算生产绿地的固氮量，单位为：千克氮每年
 ward.nfix.07 <- GetNFix(tot.ward.ha.area.07, ward.ha.area.07)
 ward.nfix.17 <- GetNFix(tot.ward.ha.area.17, ward.ha.area.17)
 
