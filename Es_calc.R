@@ -67,9 +67,12 @@ GetProdCseq <- function(x.prodeff, x.area) {
   
   # 在此基础上计算固碳服务
   prod.cseq <- prod %>% 
-    # 计算稻米和蔬菜的固碳量并加和
-    mutate(cseq.rice = rice * (1 + 1.4) * (1 - 0.1), 
-           cseq.veg = veg * (1 + 0.5) * (1 - 0.8)) %>% 
+    # 计算稻米和蔬菜的固碳量并加和，计算方法为：
+    # 吸收二氧化碳量=干物质生物量*1.63
+    # 其中：干物质生物量=产量*总重量和产量之比*(1-含水量)
+    # 结果单位为：吨二氧化碳
+    mutate(cseq.rice = rice * (1 + 1.4) * (1 - 0.1) * 1.63, 
+           cseq.veg = veg * (1 + 0.5) * (1 - 0.8) * 1.63) %>% 
     mutate(cseq = cseq.veg + cseq.rice) %>% 
     select(plotid, type, ward, area, rice, veg, cseq)
   
