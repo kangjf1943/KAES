@@ -207,6 +207,7 @@ ward.nfix.17 <- GetNFix(tot.ward.ha.area.17, ward.ha.area.17)
 # 函数：计算各地块降温效应
 # 参数：
 # frmlnd.area：各地块面积数据
+# bug：需要将降温得分转化成温差值
 GetCool <- function(frmlnd.area) {
   # 计算水田降温效应
   frmlnd.cool.ta <- frmlnd.area %>% 
