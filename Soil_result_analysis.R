@@ -57,8 +57,10 @@ soil.result.ha <-
 soil.result.ta <- 
   read.xlsx("RRawData/Soil_test_result.xlsx", sheet = "TaData") %>% 
   as_tibble() %>% 
-  select(gis_id, mean_depth_cm) %>% 
+  select(gis_id, depth_1, depth_2, depth_3) %>% 
   rename(plotid = gis_id) %>% 
+  # 计算平均深度
+  mutate(mean_depth_cm = (depth_1 + depth_2 + depth_3)/3) %>% 
   mutate(plotid = as.character(plotid), 
          mean_depth_cm = as.numeric(gsub("-", NA, mean_depth_cm)))
 
@@ -98,9 +100,9 @@ smp.ha <- ProcSmpData(soil.result.ha, match.gg.ha) %>%
                      "左京区", "下京区", "右京区", "東山区", "上京区"))) %>% 
   # 添加分区合并信息
   mutate(ward_agg = case_when(
-    ward == "山科区" ~ "中部",
-    ward == "下京区" ~ "中部",
+    ward == "上京区" ~ "中部",
     ward == "中京区" ~ "中部",
+    ward == "下京区" ~ "中部",
     ward == "南区" ~ "中部",
     ward == "東山区" ~ "中部",
     TRUE ~ as.character(ward)
