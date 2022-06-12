@@ -38,16 +38,16 @@ prodeff.17 <- prodeff %>%
   rename(rice = rice_17, veg = veg_17)
 
 # 读取各区各地块面积
-frmlnd.area.07 <- read.shapefile("GProcData/Kyoto_prod_green_space_2007") %>%
+frmlnd.area.07 <- read.shapefile("GProcData/Frmlnd_2007_add_ward") %>%
   .$dbf %>% .$dbf %>% as_tibble() %>% 
   rename_with(tolower) %>% 
-  rename(ward = city_name) %>% 
+  rename(plotid = id) %>% 
   select(plotid, type, ward, area)
 
-frmlnd.area.17 <- read.shapefile("GProcData/Kyoto_prod_green_space_2017") %>%
+frmlnd.area.17 <- read.shapefile("GProcData/Frmlnd_2017_add_ward") %>%
   .$dbf %>% .$dbf %>% as_tibble() %>% 
   rename_with(tolower) %>% 
-  rename(ward = city_name) %>%
+  rename(plotid = id) %>% 
   select(plotid, type, ward, area)
 
 # 函数：计算各地块稻米和蔬菜产量
