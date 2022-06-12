@@ -1,3 +1,6 @@
+# Statement ----
+
+# Package ----
 library(openxlsx)
 library(readxl)
 library(shapefiles)
@@ -7,7 +10,12 @@ library(patchwork)
 library(showtext)
 showtext_auto()
 
-# Production and carbon sequestration ----
+# Function ----
+
+# Get data ----
+
+# Analysis ----
+## Production and carbon seq ----
 # 读取各区单位面积产量
 prodeff <- 
   read.xlsx("RRawData/Rich_veg_production_per_area_by_ward.xlsx") %>% 
