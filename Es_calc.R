@@ -106,12 +106,15 @@ GetNFix <- function(tot.ward.ha.area, ward.ha.area) {
 # frmlnd.area：各地块面积数据
 # bug：需要将降温得分转化成温差值
 GetCool <- function(frmlnd.area) {
+  # 计算思路：基于《Zardo, L., Geneletti, D., Pérez-Soba, M., Van Eupen, M., 2017. Estimating the cooling capacity of green infrastructures to support urban planning. Ecosystem Services 26, 225–235.》中Fig.2和Fig.3中“Continental region”的部分进行赋分。首先判断得分，假设水田和“water”相当，而旱地和“grass”相当，对不同面积的水田和旱地赋予不同得分，其中：对于水田，小于2公顷得20分，否则得75分；对于旱地，小于2公顷得19分，否则得69分。其次，根据Fig.3获得得分对应的最大降温效应，0-20分为1摄氏度，61-80为3.8摄氏度。最后，将该降温效应乘以对应的地块面积，得到本研究的降温效应。
+  # 漏洞： 是用降温度数乘以面积，还是直接采用Fig2的得分乘以面积。因为如果用降温度数的话，那水田和旱地就没区别了：不管是水田还是旱地，小于2公顷都是降温1度，大于2公顷都是降温3.8度。
+
   # 计算水田降温效应
   frmlnd.cool.ta <- frmlnd.area %>% 
     # 提取水田部分地块
     subset(type == "ta") %>% 
     # 加入降温效应得分
-    mutate(cool_score = ifelse(area < 20000, 20, 75)) %>% 
+    mutate(cool_score = ifelse(area < 20000, 1, 3.8)) %>% 
     mutate(cool = cool_score * area)
   
   # 计算旱地降温效应
@@ -119,7 +122,7 @@ GetCool <- function(frmlnd.area) {
     # 提取水田部分地块
     subset(type == "ha") %>% 
     # 加入降温效应得分
-    mutate(cool_score = ifelse(area < 20000, 19, 69)) %>% 
+    mutate(cool_score = ifelse(area < 20000, 1, 3.8)) %>% 
     mutate(cool = cool_score * area)
   
   # 合并水田和旱地的结果
