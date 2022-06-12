@@ -210,24 +210,6 @@ frmlnd.area.17 <- read.shapefile("GProcData/Frmlnd_2017_add_ward") %>%
   rename(plotid = id) %>% 
   select(plotid, type, ward, area)
 
-# 汇总计算各区旱地、水田的面积以及农田总面积
-
-
-# Analysis ----
-## Production and carbon seq ----
-# 计算2007年和2017年的生产服务和固碳服务
-frmlnd.prod.cseq.07 <- 
-  GetProdCseq(prodeff.07, frmlnd.area.07)
-frmlnd.prod.cseq.17 <- 
-  GetProdCseq(prodeff.17, frmlnd.area.17)
-
-## N fix ----
-# 思路：
-# 将各区豆类产量，乘以生产绿地旱地和农地旱地总面积的比例，推算出各区生产绿地的
-# 豆类产量；再结合文献中的豆科植物单位产量固氮量计算总固氮量
-
-# 读取整理各区农地总面积
-
 # 计算全市旱地面积：结果单位为平方米
 tot.ward.ha.area.07 <- 
   # 读取2007年的全市旱地面积，单位为公顷
@@ -252,6 +234,20 @@ ward.ha.area.17 <- frmlnd.area.17 %>%
   group_by(ward) %>% 
   summarise(area = sum(area))
 
+# Analysis ----
+## Production and carbon seq ----
+# 计算2007年和2017年的生产服务和固碳服务
+frmlnd.prod.cseq.07 <- 
+  GetProdCseq(prodeff.07, frmlnd.area.07)
+frmlnd.prod.cseq.17 <- 
+  GetProdCseq(prodeff.17, frmlnd.area.17)
+
+## N fix ----
+# 思路：
+# 将各区豆类产量，乘以生产绿地旱地和农地旱地总面积的比例，推算出各区生产绿地的
+# 豆类产量；再结合文献中的豆科植物单位产量固氮量计算总固氮量
+
+# 读取整理各区农地总面积
 # 计算全市固氮量
 tot.ward.nfix <- 
   # 读取豆科作物产量
