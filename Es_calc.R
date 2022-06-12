@@ -5,6 +5,7 @@ library(openxlsx)
 library(readxl)
 library(shapefiles)
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 library(patchwork)
 library(showtext)
@@ -247,7 +248,6 @@ frmlnd.prod.cseq.17 <-
 # 将各区豆类产量，乘以生产绿地旱地和农地旱地总面积的比例，推算出各区生产绿地的
 # 豆类产量；再结合文献中的豆科植物单位产量固氮量计算总固氮量
 
-# 读取整理各区农地总面积
 # 计算全市固氮量
 tot.ward.nfix <- 
   # 读取豆科作物产量
@@ -280,7 +280,6 @@ tot.ward.nfix <-
   summarise(nfix = sum(nfix)) %>% 
   ungroup()
 
-# 推算生产绿地固氮量
 # 推算生产绿地的固氮量，单位为：千克氮每年
 ward.nfix.07 <- GetNfix(tot.ward.ha.area.07, ward.ha.area.07)
 ward.nfix.17 <- GetNfix(tot.ward.ha.area.17, ward.ha.area.17)
@@ -289,19 +288,36 @@ ward.nfix.17 <- GetNfix(tot.ward.ha.area.17, ward.ha.area.17)
 frmlnd.cool.07 <- GetCool(frmlnd.area = frmlnd.area.07)
 frmlnd.cool.17 <- GetCool(frmlnd.area = frmlnd.area.17)
 
+## Flood mitigation ----
+# 计算思路：对旱地和水田分别评价，其中：旱地采用透水率，水田采用储水量。旱地部分，基于土壤调查结果，计算各区土壤样品透水率平均值，将该值赋予对应行政区的旱地土壤，然后用该土壤透水率和对应旱地面积乘积作为旱地洪水风险防范的得分；水田部分，同理，将各区水田深度抽样调查数据的平均值赋予各区水田，然后乘以对应的面积得到储水量。
+# 漏洞：旱地透水率的空间化不尽合理，是否考虑采用插值方法？且透水率乘以对应旱地面积的方式也不尽合理
+
+# 汇总计算2007年和2017年各区城市农业旱地透水率
+ward.ha.floodeff <- smp.ha %>% select(ward, time_1, time_2, time_3) %>% 
+  pivot_longer(cols = c(time_1, time_2, time_3), 
+               names_to = "time_id", values_to = "time") %>% 
+  group_by(ward) %>% 
+  summarise(time = mean(time)) %>% 
+  ungroup() %>% 
+  # 补全缺失的行政区的数值
+  rbind(., data.frame(
+    ward = c("上京区", "中京区", "東山区"), 
+    time = .$time[which(.$ward == "下京区")]))
+
+# 计算各区旱地洪水缓解效应
+ward.ha.flood.07 <- ward.ha.area.07 %>% 
+  left_join(ward.ha.floodeff, by = "ward") %>% 
+  mutate(ha_flood = time * area)
+
+ward.ha.flood.17 <- ward.ha.area.17 %>% 
+  left_join(ward.ha.floodeff, by = "ward") %>% 
+  mutate(ha_flood = time * area)
+
 ## Sum to ward level ----
 ward.es.07 <- SumEs(frmlnd.prod.cseq.07, frmlnd.cool.07, ward.nfix.07)
 ward.es.17 <- SumEs(frmlnd.prod.cseq.17, frmlnd.cool.17, ward.nfix.17)
 
 # Export MS Excel ----
-# 导出各地块生态系统服务
-# 注意，固氮服务只有区粒度的结果，而无地块粒度的结果，因为不知道哪些地块种的是豆
-# 科植物，因此无法将结果分配到地块
-frmlnd.prod.cseq.07 %>% left_join(frmlnd.cool.07, by = "plotid") %>% 
-  WriteCamelCsv(file.name = "RProcData/Frmlnd_es_2007.csv")
-frmlnd.prod.cseq.17 %>% left_join(frmlnd.cool.17, by = "plotid") %>% 
-  WriteCamelCsv(file.name = "RProcData/Frmlnd_es_2017.csv")
-
 # 导出各区生态系统服务
 WriteCamelCsv(ward.es = ward.es.07, file.name = "GProcData/Ward_es_2007.csv")
 WriteCamelCsv(ward.es = ward.es.17, file.name = "GProcData/Ward_es_2017.csv")
