@@ -11,45 +11,6 @@ library(showtext)
 showtext_auto()
 
 # Function ----
-
-# Get data ----
-
-# Analysis ----
-## Production and carbon seq ----
-# 读取各区单位面积产量
-prodeff <- 
-  read.xlsx("RRawData/Rich_veg_production_per_area_by_ward.xlsx") %>% 
-  as_tibble() %>% 
-  # 将稻米产量单位由吨/10a转化为吨/平方米
-  mutate(rice_07 = rice_07 / (10 * 100), 
-         rice_17 = rice_17 / (10 * 100)) %>% 
-  # 将蔬菜产量单位由千克/10a转化为吨/平方米
-  mutate(veg_07 = (veg_07 / 1000) / (10 * 100), 
-         veg_17 = (veg_17 / 1000) / (10 * 100))
-
-# 提取2007年各区单位面积产量
-prodeff.07 <- prodeff %>% 
-  select(ward, rice_07, veg_07) %>% 
-  rename(rice = rice_07, veg = veg_07)
-
-# 提取2017年各区单位面积产量
-prodeff.17 <- prodeff %>% 
-  select(ward, rice_17, veg_17) %>% 
-  rename(rice = rice_17, veg = veg_17)
-
-# 读取各区各地块面积
-frmlnd.area.07 <- read.shapefile("GProcData/Frmlnd_2007_add_ward") %>%
-  .$dbf %>% .$dbf %>% as_tibble() %>% 
-  rename_with(tolower) %>% 
-  rename(plotid = id) %>% 
-  select(plotid, type, ward, area)
-
-frmlnd.area.17 <- read.shapefile("GProcData/Frmlnd_2017_add_ward") %>%
-  .$dbf %>% .$dbf %>% as_tibble() %>% 
-  rename_with(tolower) %>% 
-  rename(plotid = id) %>% 
-  select(plotid, type, ward, area)
-
 # 函数：计算各地块稻米和蔬菜产量
 # 参数：
 # x.prodeff：单位面积产量数据框
@@ -88,18 +49,6 @@ GetProdCseq <- function(x.prodeff, x.area) {
   return(prod.cseq)
 }
 
-# 计算2007年和2017年的生产服务和固碳服务
-frmlnd.prod.cseq.07 <- 
-  GetProdCseq(prodeff.07, frmlnd.area.07)
-frmlnd.prod.cseq.17 <- 
-  GetProdCseq(prodeff.17, frmlnd.area.17)
-
-# N fix ----
-# 思路：
-# 将各区豆类产量，乘以生产绿地旱地和农地旱地总面积的比例，推算出各区生产绿地的
-# 豆类产量；再结合文献中的豆科植物单位产量固氮量计算总固氮量
-
-# 读取整理各区农地总面积
 # 函数：读取整合各区农地总面积
 # 参数：
 # x：原始数据路径及文件名
@@ -107,7 +56,7 @@ GetTotHa <- function(x) {
   frmlnd.type.area <- read_excel(x)[c(10:20), c(2:8)] %>%  
     # 重命名各列列名
     rename_with(~ c("ward", "total", "self_support_type", "sale_type", 
-                  "sale_paddy_field", "sale_dry_land", "sale_orchard")) %>% 
+                    "sale_paddy_field", "sale_dry_land", "sale_orchard")) %>% 
     # 替换非数字数值
     apply(2, function(x) {gsub("Ｘ", 0, x)}) %>% 
     apply(2, function(x) {gsub("－", 0, x)}) %>%
@@ -132,6 +81,145 @@ GetTotHa <- function(x) {
   # 返回结果
   return(frmlnd.type.area)
 }
+
+# 函数：计算固氮量
+# 参数：
+# tot.ward.ha.area：全市口径各区旱地面积
+# ward.ha.area：生产绿地口径各区旱地面积
+GetNFix <- function(tot.ward.ha.area, ward.ha.area) {
+  ward.nfix <- tot.ward.ha.area[c("ward", "tot_ha_area")] %>% 
+    left_join(ward.ha.area, by = "ward") %>% 
+    # 计算生产绿地旱地和总体旱地面积的比例
+    mutate(rate = area / tot_ha_area) %>% 
+    left_join(tot.ward.nfix, by = "ward") %>% 
+    # 推算生产绿地的固氮量
+    mutate(nfix = nfix * rate) %>% 
+    # 替换NaN值
+    mutate(nfix = ifelse(is.na(nfix), 0, nfix)) %>% 
+    select(ward, nfix)
+  
+  return(ward.nfix)
+}
+
+# 函数：计算各地块降温效应
+# 参数：
+# frmlnd.area：各地块面积数据
+# bug：需要将降温得分转化成温差值
+GetCool <- function(frmlnd.area) {
+  # 计算水田降温效应
+  frmlnd.cool.ta <- frmlnd.area %>% 
+    # 提取水田部分地块
+    subset(type == "ta") %>% 
+    # 加入降温效应得分
+    mutate(cool_score = ifelse(area < 20000, 20, 75)) %>% 
+    mutate(cool = cool_score * area)
+  
+  # 计算旱地降温效应
+  frmlnd.cool.ha <- frmlnd.area %>% 
+    # 提取水田部分地块
+    subset(type == "ha") %>% 
+    # 加入降温效应得分
+    mutate(cool_score = ifelse(area < 20000, 19, 69)) %>% 
+    mutate(cool = cool_score * area)
+  
+  # 合并水田和旱地的结果
+  frmlnd.cool <- rbind(frmlnd.cool.ta, frmlnd.cool.ha) %>% 
+    select(plotid, cool)
+  
+  return(frmlnd.cool)
+}
+
+# 函数：将通过下划线连接的字符串改成驼峰式写法
+# 参数：
+# x：字符串
+TurnCamel <- function(x) {
+  # 根据下划线拆分字符串
+  strsplit(x, "_")[[1]] %>% 
+    # 将每个元素都改成首字母大写
+    Hmisc::capitalize() %>% 
+    # 将新的字符串拼接起来
+    Reduce(paste0, .) %>% 
+    return()
+}
+
+# 函数：将数据框列名重命名为驼峰式写法，再输出为*.csv文件
+# 参数：
+# ward.es：待写出的数据框
+# file.name：输出路径和文件名
+WriteCamelCsv <- function(ward.es, file.name) {
+  for (i in names(ward.es)) {
+    names(ward.es)[names(ward.es) == i] <- TurnCamel(i)
+  }
+  write.csv(ward.es, file.name)
+}
+
+# 计算各区生态系统服务量
+SumEs <- function(frmlnd.prod.cseq, frmlnd.cool, ward.nfix) {
+  es.ward <- frmlnd.prod.cseq %>% 
+    select(plotid, ward, rice, veg, cseq) %>% 
+    left_join(frmlnd.cool %>% select(plotid, cool), by = "plotid") %>% 
+    group_by(ward) %>% 
+    summarise( 
+      rice = sum(rice), 
+      veg = sum(veg), 
+      cseq = sum(cseq), 
+      cool = sum(cool)) %>% 
+    ungroup() %>% 
+    # 合并固氮量结果
+    left_join(ward.nfix[c("ward", "nfix")], by = "ward")
+  
+  return(es.ward)
+}
+
+# Get data ----
+# 读取各区单位面积产量
+prodeff <- 
+  read.xlsx("RRawData/Rich_veg_production_per_area_by_ward.xlsx") %>% 
+  as_tibble() %>% 
+  # 将稻米产量单位由吨/10a转化为吨/平方米
+  mutate(rice_07 = rice_07 / (10 * 100), 
+         rice_17 = rice_17 / (10 * 100)) %>% 
+  # 将蔬菜产量单位由千克/10a转化为吨/平方米
+  mutate(veg_07 = (veg_07 / 1000) / (10 * 100), 
+         veg_17 = (veg_17 / 1000) / (10 * 100))
+
+# 提取2007年各区单位面积产量
+prodeff.07 <- prodeff %>% 
+  select(ward, rice_07, veg_07) %>% 
+  rename(rice = rice_07, veg = veg_07)
+
+# 提取2017年各区单位面积产量
+prodeff.17 <- prodeff %>% 
+  select(ward, rice_17, veg_17) %>% 
+  rename(rice = rice_17, veg = veg_17)
+
+# 读取各区各地块面积
+frmlnd.area.07 <- read.shapefile("GProcData/Frmlnd_2007_add_ward") %>%
+  .$dbf %>% .$dbf %>% as_tibble() %>% 
+  rename_with(tolower) %>% 
+  rename(plotid = id) %>% 
+  select(plotid, type, ward, area)
+
+frmlnd.area.17 <- read.shapefile("GProcData/Frmlnd_2017_add_ward") %>%
+  .$dbf %>% .$dbf %>% as_tibble() %>% 
+  rename_with(tolower) %>% 
+  rename(plotid = id) %>% 
+  select(plotid, type, ward, area)
+
+# Analysis ----
+## Production and carbon seq ----
+# 计算2007年和2017年的生产服务和固碳服务
+frmlnd.prod.cseq.07 <- 
+  GetProdCseq(prodeff.07, frmlnd.area.07)
+frmlnd.prod.cseq.17 <- 
+  GetProdCseq(prodeff.17, frmlnd.area.17)
+
+## N fix ----
+# 思路：
+# 将各区豆类产量，乘以生产绿地旱地和农地旱地总面积的比例，推算出各区生产绿地的
+# 豆类产量；再结合文献中的豆科植物单位产量固氮量计算总固氮量
+
+# 读取整理各区农地总面积
 
 # 计算全市旱地面积：结果单位为平方米
 tot.ward.ha.area.07 <- 
@@ -178,8 +266,10 @@ tot.ward.nfix <-
     species == "さやいんげん" ~ 23
   )) %>% 
   # 替换旱地面积和产量为NA的值
-  mutate(area_ha = ifelse(is.na(area_ha), 0, area_ha), 
-         yield = ifelse(is.na(yield), 0, yield)) %>% 
+  mutate(
+    area_ha = ifelse(area_ha == "-", 0, area_ha), 
+    yield = ifelse(is.na(yield), 0, yield)) %>% 
+  mutate(area_ha = as.numeric(area_ha)) %>% 
   # 计算固氮量，结果单位为：千克氮每年
   mutate(nfix = nfix_rate * area_ha) %>% 
   # 汇总计算各区总固氮量，结果单位为：千克氮每年
@@ -188,115 +278,26 @@ tot.ward.nfix <-
   ungroup()
 
 # 推算生产绿地固氮量
-# 函数：计算固氮量
-# 参数：
-# tot.ward.ha.area：全市口径各区旱地面积
-# ward.ha.area：生产绿地口径各区旱地面积
-GetNFix <- function(tot.ward.ha.area, ward.ha.area) {
-  ward.nfix <- tot.ward.ha.area[c("ward", "tot_ha_area")] %>% 
-    left_join(ward.ha.area, by = "ward") %>% 
-    # 计算生产绿地旱地和总体旱地面积的比例
-    mutate(rate = area / tot_ha_area) %>% 
-    left_join(tot.ward.nfix, by = "ward") %>% 
-    # 推算生产绿地的固氮量
-    mutate(nfix = nfix * rate) %>% 
-    # 替换NaN值
-    mutate(nfix = ifelse(is.na(nfix), 0, nfix)) %>% 
-    select(ward, nfix)
-  
-  return(ward.nfix)
-}
-
 # 推算生产绿地的固氮量，单位为：千克氮每年
 ward.nfix.07 <- GetNFix(tot.ward.ha.area.07, ward.ha.area.07)
 ward.nfix.17 <- GetNFix(tot.ward.ha.area.17, ward.ha.area.17)
 
-# Cooling effect ---- 
-# 函数：计算各地块降温效应
-# 参数：
-# frmlnd.area：各地块面积数据
-# bug：需要将降温得分转化成温差值
-GetCool <- function(frmlnd.area) {
-  # 计算水田降温效应
-  frmlnd.cool.ta <- frmlnd.area %>% 
-    # 提取水田部分地块
-    subset(type == "ta") %>% 
-    # 加入降温效应得分
-    mutate(cool_score = ifelse(area < 20000, 20, 75)) %>% 
-    mutate(cool = cool_score * area)
-  
-  # 计算旱地降温效应
-  frmlnd.cool.ha <- frmlnd.area %>% 
-    # 提取水田部分地块
-    subset(type == "ha") %>% 
-    # 加入降温效应得分
-    mutate(cool_score = ifelse(area < 20000, 19, 69)) %>% 
-    mutate(cool = cool_score * area)
-  
-  # 合并水田和旱地的结果
-  frmlnd.cool <- rbind(frmlnd.cool.ta, frmlnd.cool.ha) %>% 
-    select(plotid, cool)
-  
-  return(frmlnd.cool)
-}
-
+## Cooling effect ---- 
 frmlnd.cool.07 <- GetCool(frmlnd.area = frmlnd.area.07)
 frmlnd.cool.17 <- GetCool(frmlnd.area = frmlnd.area.17)
 
-# Sum to ward level ----
-# 计算各区生态系统服务量
-SumEs <- function(frmlnd.prod.cseq, frmlnd.cool, ward.nfix) {
-  es.ward <- frmlnd.prod.cseq %>% 
-    select(plotid, ward, rice, veg, cseq) %>% 
-    left_join(frmlnd.cool %>% select(plotid, cool), by = "plotid") %>% 
-    group_by(ward) %>% 
-    summarise( 
-      rice = sum(rice), 
-      veg = sum(veg), 
-      cseq = sum(cseq), 
-      cool = sum(cool)) %>% 
-    ungroup() %>% 
-    # 合并固氮量结果
-    left_join(ward.nfix[c("ward", "nfix")], by = "ward")
-  
-  return(es.ward)
-}
-
+## Sum to ward level ----
 ward.es.07 <- SumEs(frmlnd.prod.cseq.07, frmlnd.cool.07, ward.nfix.07)
 ward.es.17 <- SumEs(frmlnd.prod.cseq.17, frmlnd.cool.17, ward.nfix.17)
 
 # Export MS Excel ----
-# 函数：将通过下划线连接的字符串改成驼峰式写法
-# 参数：
-# x：字符串
-TurnCamel <- function(x) {
-  # 根据下划线拆分字符串
-  strsplit(x, "_")[[1]] %>% 
-    # 将每个元素都改成首字母大写
-    Hmisc::capitalize() %>% 
-    # 将新的字符串拼接起来
-    Reduce(paste0, .) %>% 
-    return()
-}
-
-# 函数：将数据框列名重命名为驼峰式写法，再输出为*.csv文件
-# 参数：
-# ward.es：待写出的数据框
-# file.name：输出路径和文件名
-WriteCamelCsv <- function(ward.es, file.name) {
-  for (i in names(ward.es)) {
-    names(ward.es)[names(ward.es) == i] <- TurnCamel(i)
-  }
-  write.csv(ward.es, file.name)
-}
-
 # 导出各地块生态系统服务
 # 注意，固氮服务只有区粒度的结果，而无地块粒度的结果，因为不知道哪些地块种的是豆
 # 科植物，因此无法将结果分配到地块
 frmlnd.prod.cseq.07 %>% left_join(frmlnd.cool.07, by = "plotid") %>% 
-  WriteCamelCsv(file.name = "GProcData/Frmlnd_es_2007.csv")
+  WriteCamelCsv(file.name = "RProcData/Frmlnd_es_2007.csv")
 frmlnd.prod.cseq.17 %>% left_join(frmlnd.cool.17, by = "plotid") %>% 
-  WriteCamelCsv(file.name = "GProcData/Frmlnd_es_2017.csv")
+  WriteCamelCsv(file.name = "RProcData/Frmlnd_es_2017.csv")
 
 # 导出各区生态系统服务
 WriteCamelCsv(ward.es = ward.es.07, file.name = "GProcData/Ward_es_2007.csv")
