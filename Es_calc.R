@@ -9,6 +9,7 @@ library(ggplot2)
 library(patchwork)
 library(showtext)
 showtext_auto()
+# 漏洞：需要提前读入土壤样品分析的结果
 
 # Function ----
 # 函数：计算各地块稻米和蔬菜产量
@@ -85,11 +86,11 @@ GetTotHa <- function(x) {
 # 函数：计算固氮量
 # 参数：
 # tot.ward.ha.area：全市口径各区旱地面积
-# ward.ha.area：生产绿地口径各区旱地面积
-GetNFix <- function(tot.ward.ha.area, ward.ha.area) {
+# ward.ha.area：城市农业口径各区旱地面积
+GetNfix <- function(tot.ward.ha.area, ward.ha.area) {
   ward.nfix <- tot.ward.ha.area[c("ward", "tot_ha_area")] %>% 
     left_join(ward.ha.area, by = "ward") %>% 
-    # 计算生产绿地旱地和总体旱地面积的比例
+    # 计算城市农业旱地和总体旱地面积的比例
     mutate(rate = area / tot_ha_area) %>% 
     left_join(tot.ward.nfix, by = "ward") %>% 
     # 推算生产绿地的固氮量
@@ -209,6 +210,9 @@ frmlnd.area.17 <- read.shapefile("GProcData/Frmlnd_2017_add_ward") %>%
   rename(plotid = id) %>% 
   select(plotid, type, ward, area)
 
+# 汇总计算各区旱地、水田的面积以及农田总面积
+
+
 # Analysis ----
 ## Production and carbon seq ----
 # 计算2007年和2017年的生产服务和固碳服务
@@ -282,8 +286,8 @@ tot.ward.nfix <-
 
 # 推算生产绿地固氮量
 # 推算生产绿地的固氮量，单位为：千克氮每年
-ward.nfix.07 <- GetNFix(tot.ward.ha.area.07, ward.ha.area.07)
-ward.nfix.17 <- GetNFix(tot.ward.ha.area.17, ward.ha.area.17)
+ward.nfix.07 <- GetNfix(tot.ward.ha.area.07, ward.ha.area.07)
+ward.nfix.17 <- GetNfix(tot.ward.ha.area.17, ward.ha.area.17)
 
 ## Cooling effect ---- 
 frmlnd.cool.07 <- GetCool(frmlnd.area = frmlnd.area.07)
