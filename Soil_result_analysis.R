@@ -61,6 +61,8 @@ soil.result.ta <-
   rename(plotid = gis_id) %>% 
   # 计算平均深度
   mutate(mean_depth_cm = (depth_1 + depth_2 + depth_3)/3) %>% 
+  # 删除无样本的行
+  subset(!is.na(mean_depth_cm)) %>% 
   mutate(plotid = as.character(plotid), 
          mean_depth_cm = as.numeric(gsub("-", NA, mean_depth_cm)))
 
