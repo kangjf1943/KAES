@@ -129,7 +129,7 @@ GetCool <- function(frmlnd.area) {
   
   # 合并水田和旱地的结果
   frmlnd.cool <- rbind(frmlnd.cool.ta, frmlnd.cool.ha) %>% 
-    select(plotid, cool)
+    select(plotid, ward, cool)
   
   return(frmlnd.cool)
 }
@@ -177,6 +177,10 @@ SumEs <- function(frmlnd.prod.cseq, frmlnd.cool, ward.nfix) {
 }
 
 # Get data ----
+# 京都市各区
+kWard <- c("右京区", "西京区", "北区", "上京区", "中京区", "下京区", "南区",  
+           "左京区", "東山区", "伏見区", "山科区")
+
 # 读取各区单位面积产量
 prodeff <- 
   read.xlsx("RRawData/Rich_veg_production_per_area_by_ward.xlsx") %>% 
@@ -204,7 +208,6 @@ frmlnd.area.07 <- read.shapefile("GProcData/Frmlnd_2007_add_ward") %>%
   rename_with(tolower) %>% 
   rename(plotid = id) %>% 
   select(plotid, type, ward, area)
-
 frmlnd.area.17 <- read.shapefile("GProcData/Frmlnd_2017_add_ward") %>%
   .$dbf %>% .$dbf %>% as_tibble() %>% 
   rename_with(tolower) %>% 
@@ -217,7 +220,6 @@ tot.ward.ha.area.07 <-
   GetTotHa("RRawData/Kyoto_all_farmland_area_2007.xls") %>% 
   # 将单位转化为平方米
   mutate(tot_ha_area = tot_ha_area * 10000)
-
 tot.ward.ha.area.17 <- 
   # 读取2017年的全市旱地面积，单位为100平方米
   GetTotHa("RRawData/Kyoto_all_farmland_area_2017.xlsx") %>% 
@@ -229,7 +231,6 @@ ward.ha.area.07 <- frmlnd.area.07 %>%
   subset(type == "ha") %>%
   group_by(ward) %>% 
   summarise(area = sum(area))
-
 ward.ha.area.17 <- frmlnd.area.17 %>% 
   subset(type == "ha") %>%
   group_by(ward) %>% 
@@ -240,7 +241,6 @@ ward.ta.area.07 <- frmlnd.area.07 %>%
   subset(type == "ta") %>%
   group_by(ward) %>% 
   summarise(area = sum(area))
-
 ward.ta.area.17 <- frmlnd.area.17 %>% 
   subset(type == "ta") %>%
   group_by(ward) %>% 
@@ -253,6 +253,16 @@ frmlnd.prod.cseq.07 <-
   GetProdCseq(prodeff.07, frmlnd.area.07)
 frmlnd.prod.cseq.17 <- 
   GetProdCseq(prodeff.17, frmlnd.area.17)
+
+# 汇总计算区级生产服务和固碳服务
+ward.prod.cseq.07 <- frmlnd.prod.cseq.07 %>% 
+  group_by(ward) %>% 
+  summarise(rice = sum(rice), veg = sum(veg), cseq = sum(cseq)) %>% 
+  ungroup()
+ward.prod.cseq.17 <- frmlnd.prod.cseq.17 %>% 
+  group_by(ward) %>% 
+  summarise(rice = sum(rice), veg = sum(veg), cseq = sum(cseq)) %>% 
+  ungroup()
 
 ## N fix ----
 # 思路：
@@ -296,8 +306,19 @@ ward.nfix.07 <- GetNfix(tot.ward.ha.area.07, ward.ha.area.07)
 ward.nfix.17 <- GetNfix(tot.ward.ha.area.17, ward.ha.area.17)
 
 ## Cooling effect ---- 
+# 计算各地块降温效应
 frmlnd.cool.07 <- GetCool(frmlnd.area = frmlnd.area.07)
 frmlnd.cool.17 <- GetCool(frmlnd.area = frmlnd.area.17)
+
+# 汇总计算各区降温效应
+ward.cool.07 <- frmlnd.cool.07 %>% 
+  group_by(ward) %>% 
+  summarise(cool = sum(cool)) %>% 
+  ungroup()
+ward.cool.17 <- frmlnd.cool.17 %>% 
+  group_by(ward) %>% 
+  summarise(cool = sum(cool)) %>% 
+  ungroup()
 
 ## Flood mitigation ----
 # 计算思路：对旱地和水田分别评价，其中：旱地采用透水率，水田采用储水量。旱地部分，基于土壤调查结果，计算各区土壤样品透水率平均值，将该值赋予对应行政区的旱地土壤，然后用该土壤透水率和对应旱地面积乘积作为旱地洪水风险防范的得分；水田部分，同理，将各区水田深度抽样调查数据的平均值赋予各区水田，然后乘以对应的面积得到储水量。
@@ -340,15 +361,31 @@ ward.ta.floodeff <- smp.ta %>% select(ward, depth_1, depth_2, depth_3) %>%
 # 计算各区水田洪水缓解效应
 ward.ta.flood.07 <- ward.ta.area.07 %>% 
   left_join(ward.ta.floodeff, by = "ward") %>% 
-  mutate(ha_flood = depth * area)
+  mutate(ta_flood = depth * area)
 
 ward.ta.flood.17 <- ward.ta.area.17 %>% 
   left_join(ward.ta.floodeff, by = "ward") %>% 
-  mutate(ha_flood = depth * area)
+  mutate(ta_flood = depth * area)
 
 ## Sum to ward level ----
-ward.es.07 <- SumEs(frmlnd.prod.cseq.07, frmlnd.cool.07, ward.nfix.07)
-ward.es.17 <- SumEs(frmlnd.prod.cseq.17, frmlnd.cool.17, ward.nfix.17)
+ward.es.07 <- Reduce(
+  function(x, y) {left_join(x, y, by = "ward")}, 
+  list(tibble(ward = kWard), 
+       ward.prod.cseq.07, 
+       ward.nfix.07, 
+       ward.cool.07, 
+       select(ward.ha.flood.07, ward, ha_flood), 
+       select(ward.ta.flood.07, ward, ta_flood))
+)
+ward.es.17 <- Reduce(
+  function(x, y) {left_join(x, y, by = "ward")}, 
+  list(tibble(ward = kWard), 
+       ward.prod.cseq.17, 
+       ward.nfix.17, 
+       ward.cool.17, 
+       select(ward.ha.flood.17, ward, ha_flood), 
+       select(ward.ta.flood.17, ward, ta_flood))
+)
 
 # Export MS Excel ----
 # 导出各区生态系统服务
