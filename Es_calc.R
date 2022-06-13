@@ -410,17 +410,26 @@ ward.es.07.scale <- data.frame(ward = ward.es.07$ward) %>%
 ward.es.17.scale <- data.frame(ward = ward.es.17$ward) %>% 
   cbind(apply(select(ward.es.17, -ward), 2, ScaleMinMax))
 # 输出图片
-png(filename = "RProcData/Es_ward.png", width = 1200, height = 2400, res = 200)
-(pivot_longer(ward.es.07.scale, cols = -ward, names_to = "es") %>% 
-  mutate(year = "2007") %>% 
-  rbind(pivot_longer(ward.es.17.scale, cols = -ward, names_to = "es") %>% 
-          mutate(year = "2017")) %>% 
-  subset(es != "nfix") %>%  # 漏洞：暂时去除固氮服务
-  mutate(es = factor(es, levels = kEcoSvs), 
-         ward = factor(ward, levels = kWard)) %>% 
-  ggplot() + 
-  geom_col(aes(x = ward, y = value, fill = year), position = "dodge") + 
-  facet_wrap(.~ es, ncol = 1))
+png(filename = "RProcData/Es_ward.png", width = 800, height = 2400, res = 200)
+(
+  pivot_longer(ward.es.07.scale, cols = -ward, names_to = "es") %>% 
+    mutate(year = "2007") %>% 
+    rbind(pivot_longer(ward.es.17.scale, cols = -ward, names_to = "es") %>% 
+            mutate(year = "2017")) %>% 
+    subset(es != "nfix") %>%  # 漏洞：暂时去除固氮服务
+    mutate(es = factor(es, levels = kEcoSvs), 
+           ward = factor(ward, levels = kWard)) %>% 
+    ggplot() + 
+    geom_col(aes(x = ward, y = value, fill = year), position = "dodge") + 
+    scale_fill_manual(values = c("grey", "#E39EA1")) + 
+    facet_wrap(.~ es, ncol = 1) + 
+    theme_bw() + 
+    theme(axis.text.x = element_text(size = 12, angle = 90), 
+          axis.title.y = element_text(size = 14), 
+          axis.text.y = element_text(size = 12), 
+          legend.text = element_text(size = 14)) + 
+    labs(x = "", y = "生態系サービスにおける標準値")
+)
 dev.off()
 
 # 各年份各区ES雷达图
