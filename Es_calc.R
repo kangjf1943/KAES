@@ -235,6 +235,17 @@ ward.ha.area.17 <- frmlnd.area.17 %>%
   group_by(ward) %>% 
   summarise(area = sum(area))
 
+# 汇总计算2007年和2017年各区城市农业水田面积
+ward.ta.area.07 <- frmlnd.area.07 %>% 
+  subset(type == "ta") %>%
+  group_by(ward) %>% 
+  summarise(area = sum(area))
+
+ward.ta.area.17 <- frmlnd.area.17 %>% 
+  subset(type == "ta") %>%
+  group_by(ward) %>% 
+  summarise(area = sum(area))
+
 # Analysis ----
 ## Production and carbon seq ----
 # 计算2007年和2017年的生产服务和固碳服务
@@ -312,6 +323,28 @@ ward.ha.flood.07 <- ward.ha.area.07 %>%
 ward.ha.flood.17 <- ward.ha.area.17 %>% 
   left_join(ward.ha.floodeff, by = "ward") %>% 
   mutate(ha_flood = time * area)
+
+# 汇总计算各区水田样本的深度平均值
+ward.ta.floodeff <- smp.ta %>% select(ward, depth_1, depth_2, depth_3) %>% 
+  pivot_longer(cols = c(depth_1, depth_2, depth_3), 
+               names_to = "depth_id", values_to = "depth") %>% 
+  group_by(ward) %>% 
+  summarise(depth = mean(depth)) %>% 
+  ungroup() %>% 
+  # 漏洞：补全缺失的行政区的数值
+  rbind(., data.frame(
+    ward = c("北区", "上京区", "中京区", "東山区", "下京区"), 
+    depth = c(.$depth[which(.$ward == "左京区")], 
+              rep(.$depth[which(.$ward == "南区")], 4))))
+
+# 计算各区水田洪水缓解效应
+ward.ta.flood.07 <- ward.ta.area.07 %>% 
+  left_join(ward.ta.floodeff, by = "ward") %>% 
+  mutate(ha_flood = depth * area)
+
+ward.ta.flood.17 <- ward.ta.area.17 %>% 
+  left_join(ward.ta.floodeff, by = "ward") %>% 
+  mutate(ha_flood = depth * area)
 
 ## Sum to ward level ----
 ward.es.07 <- SumEs(frmlnd.prod.cseq.07, frmlnd.cool.07, ward.nfix.07)
