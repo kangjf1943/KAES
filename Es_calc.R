@@ -403,8 +403,8 @@ ward.es.17[is.na(ward.es.17)] <- 0
 
 # Export MS Excel ----
 # 导出各区生态系统服务
-WriteCamelCsv(ward.es = ward.es.07, file.name = "GProcData/Ward_es_2007.csv")
-WriteCamelCsv(ward.es = ward.es.17, file.name = "GProcData/Ward_es_2017.csv")
+WriteCamelCsv(ward.es = ward.es.07, file.name = "RProcData/Ward_es_2007.csv")
+WriteCamelCsv(ward.es = ward.es.17, file.name = "RProcData/Ward_es_2017.csv")
 
 # Visualization ----
 # 分析各区ES差异
@@ -414,6 +414,7 @@ ward.es.07.scale <- data.frame(ward = ward.es.07$ward) %>%
 ward.es.17.scale <- data.frame(ward = ward.es.17$ward) %>% 
   cbind(apply(select(ward.es.17, -ward), 2, ScaleMinMax))
 
+# 输出图片
 png(filename = "RProcData/Es_ward.png", width = 1200, height = 2400, res = 200)
 (pivot_longer(ward.es.07.scale, cols = -ward, names_to = "es") %>% 
   mutate(year = "2007") %>% 
