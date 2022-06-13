@@ -176,10 +176,21 @@ SumEs <- function(frmlnd.prod.cseq, frmlnd.cool, ward.nfix) {
   return(es.ward)
 }
 
+# function: min-max scaling
+# parameters: 
+# x: numeric vector
+ScaleMinMax <- function(x) {
+  output <- (x - min(x)) / (max(x) - min(x))
+  return(output)
+}
+
 # Get data ----
 # 京都市各区
 kWard <- c("右京区", "西京区", "北区", "上京区", "中京区", "下京区", "南区",  
            "左京区", "東山区", "伏見区", "山科区")
+
+# 生态系统服务项目
+kEcoSvs <- c("rice", "veg", "cseq", "nfix", "cool", "ha_flood", "ta_flood")
 
 # 读取各区单位面积产量
 prodeff <- 
@@ -368,6 +379,7 @@ ward.ta.flood.17 <- ward.ta.area.17 %>%
   mutate(ta_flood = depth * area)
 
 ## Sum to ward level ----
+# 漏洞：存在NA值，需要确认是否应为0
 ward.es.07 <- Reduce(
   function(x, y) {left_join(x, y, by = "ward")}, 
   list(tibble(ward = kWard), 
@@ -377,6 +389,7 @@ ward.es.07 <- Reduce(
        select(ward.ha.flood.07, ward, ha_flood), 
        select(ward.ta.flood.07, ward, ta_flood))
 )
+ward.es.07[is.na(ward.es.07)] <- 0
 ward.es.17 <- Reduce(
   function(x, y) {left_join(x, y, by = "ward")}, 
   list(tibble(ward = kWard), 
@@ -386,6 +399,7 @@ ward.es.17 <- Reduce(
        select(ward.ha.flood.17, ward, ha_flood), 
        select(ward.ta.flood.17, ward, ta_flood))
 )
+ward.es.17[is.na(ward.es.17)] <- 0
 
 # Export MS Excel ----
 # 导出各区生态系统服务
@@ -394,17 +408,21 @@ WriteCamelCsv(ward.es = ward.es.17, file.name = "GProcData/Ward_es_2017.csv")
 
 # Visualization ----
 # 分析各区ES差异
-plot_es_ward <- vector("list", length = ncol(es_ward) - 1)
-names(plot_es_ward) <- names(es_ward)[-1]
-for (i in names(plot_es_ward)) {
-  plot_es_ward[[i]] <- ggplot(es_ward) + geom_col(aes_string(i, "ward"))
-}
-png(filename = "Es_ward.png", width = 1200, height = 2400, res = 200)
-(plot_es_ward[[1]] + plot_es_ward[[2]] + plot_es_ward[[3]]) /
-  (plot_es_ward[[4]] + plot_es_ward[[5]] + plot_es_ward[[6]]) /
-  (plot_es_ward[[7]] + plot_es_ward[[8]] + plot_es_ward[[9]]) /
-  (plot_es_ward[[10]] + plot_es_ward[[11]] + plot_es_ward[[12]]) /
-  (plot_es_ward[[13]] + plot_es_ward[[14]] + plot_es_ward[[15]]) / 
-  (plot_es_ward[[16]] + plot_es_ward[[17]] + plot_es_ward[[18]])
-dev.off()
+# 区级生态系统服务结果标准化
+ward.es.07.scale <- data.frame(ward = ward.es.07$ward) %>% 
+  cbind(apply(select(ward.es.07, -ward), 2, ScaleMinMax))
+ward.es.17.scale <- data.frame(ward = ward.es.17$ward) %>% 
+  cbind(apply(select(ward.es.17, -ward), 2, ScaleMinMax))
 
+png(filename = "RProcData/Es_ward.png", width = 1200, height = 2400, res = 200)
+(pivot_longer(ward.es.07.scale, cols = -ward, names_to = "es") %>% 
+  mutate(year = "2007") %>% 
+  rbind(pivot_longer(ward.es.17.scale, cols = -ward, names_to = "es") %>% 
+          mutate(year = "2017")) %>% 
+  subset(es != "nfix") %>%  # 漏洞：暂时去除固氮服务
+  mutate(es = factor(es, levels = kEcoSvs), 
+         ward = factor(ward, levels = kWard)) %>% 
+  ggplot() + 
+  geom_col(aes(x = ward, y = value, fill = year), position = "dodge") + 
+  facet_wrap(.~ es, ncol = 1))
+dev.off()
