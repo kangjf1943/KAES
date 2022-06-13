@@ -6,6 +6,7 @@ library(readxl)
 library(shapefiles)
 library(dplyr)
 library(tidyr)
+library(fmsb)
 library(ggplot2)
 library(patchwork)
 library(showtext)
@@ -402,13 +403,12 @@ ward.es.17 <- Reduce(
 ward.es.17[is.na(ward.es.17)] <- 0
 
 # Visualization ----
-# 分析各区ES差异
+# 可视化各区ES差异
 # 区级生态系统服务结果标准化
 ward.es.07.scale <- data.frame(ward = ward.es.07$ward) %>% 
   cbind(apply(select(ward.es.07, -ward), 2, ScaleMinMax))
 ward.es.17.scale <- data.frame(ward = ward.es.17$ward) %>% 
   cbind(apply(select(ward.es.17, -ward), 2, ScaleMinMax))
-
 # 输出图片
 png(filename = "RProcData/Es_ward.png", width = 1200, height = 2400, res = 200)
 (pivot_longer(ward.es.07.scale, cols = -ward, names_to = "es") %>% 
@@ -422,6 +422,26 @@ png(filename = "RProcData/Es_ward.png", width = 1200, height = 2400, res = 200)
   geom_col(aes(x = ward, y = value, fill = year), position = "dodge") + 
   facet_wrap(.~ es, ncol = 1))
 dev.off()
+
+# 各年份各区ES雷达图
+for (i in 1:11) {
+  png(filename = paste0("RProcData/", ward.es.17.scale$ward[i], "_radar.png"), 
+      width = 1200, height = 1200, res = 300)
+  radarchart(
+    rbind(
+      # 添加雷达图内外边界所需数据
+      rep(1, 6), rep(0, 6), 
+      # 漏洞：本次分析不包含固氮效应
+      ward.es.07.scale[i, kEcoSvs[which(!kEcoSvs %in% "nfix")]], 
+      ward.es.17.scale[i, kEcoSvs[which(!kEcoSvs %in% "nfix")]]), 
+    # 漏洞：手动输入各服务对应的日语，应更改kEcoSvs常量
+    vlabels = c("水稲収穫", "野菜収穫", "CO2吸収", "大気冷却", 
+                "水量調節(畑)", "水量調節(田)"), 
+    plty = c(1, 1), plwd = 2, 
+    pcol = c("red", "darkgreen")
+  )
+  dev.off()
+}
 
 # Export MS Excel ----
 # 导出各区生态系统服务及其极差标准化值
