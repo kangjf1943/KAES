@@ -401,11 +401,6 @@ ward.es.17 <- Reduce(
 )
 ward.es.17[is.na(ward.es.17)] <- 0
 
-# Export MS Excel ----
-# 导出各区生态系统服务
-WriteCamelCsv(ward.es = ward.es.07, file.name = "RProcData/Ward_es_2007.csv")
-WriteCamelCsv(ward.es = ward.es.17, file.name = "RProcData/Ward_es_2017.csv")
-
 # Visualization ----
 # 分析各区ES差异
 # 区级生态系统服务结果标准化
@@ -427,3 +422,13 @@ png(filename = "RProcData/Es_ward.png", width = 1200, height = 2400, res = 200)
   geom_col(aes(x = ward, y = value, fill = year), position = "dodge") + 
   facet_wrap(.~ es, ncol = 1))
 dev.off()
+
+# Export MS Excel ----
+# 导出各区生态系统服务及其极差标准化值
+WriteCamelCsv(ward.es = ward.es.07, file.name = "RProcData/Ward_es_2007.csv")
+WriteCamelCsv(ward.es = ward.es.17, file.name = "RProcData/Ward_es_2017.csv")
+
+WriteCamelCsv(ward.es = ward.es.07.scale, 
+              file.name = "RProcData/Ward_es_2007_标准化.csv")
+WriteCamelCsv(ward.es = ward.es.17.scale, 
+              file.name = "RProcData/Ward_es_2017_标准化.csv")
