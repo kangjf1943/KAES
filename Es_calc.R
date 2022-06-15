@@ -185,6 +185,42 @@ ScaleMinMax <- function(x) {
   return(output)
 }
 
+# 函数：作各年份各区各服务对比的图
+# 参数：
+# x.07：2007年的生态系统服务数据
+# x.17：2017年的生态系统服务数据
+GetBar <- function(x.07, x.17) {
+  pivot_longer(x.07, cols = -ward, names_to = "es") %>% 
+    mutate(year = "2007") %>% 
+    rbind(pivot_longer(x.17, cols = -ward, names_to = "es") %>% 
+            mutate(year = "2017")) %>% 
+    subset(es != "nfix") %>%  # 漏洞：暂时去除固氮服务
+    mutate(es = factor(es, levels = kEcoSvs), 
+           ward = factor(ward, levels = kWard)) %>% 
+    ggplot() + 
+    geom_col(aes(x = ward, y = value, fill = year), 
+             position = "dodge", width = 0.9) + 
+    scale_fill_manual(values = c("grey", "#E39EA1")) + 
+    facet_wrap(
+      .~ es, ncol = 1, 
+      labeller = function(variable, value){
+        names <- list("rice" = "水稲収穫量",
+                      "veg" = "野菜収穫量",
+                      "cseq" = "年間CO2吸収", 
+                      "cool" = "クーリング効果", 
+                      "ha_flood" = "透水量_畑", 
+                      "ta_flood" = "貯水量_田")
+        return(names[value])
+      }
+    ) + 
+    theme_bw() + 
+    theme(axis.text.x = element_text(size = 12, angle = 90), 
+          axis.title.y = element_text(size = 14), 
+          axis.text.y = element_text(size = 12), 
+          legend.text = element_text(size = 14)) + 
+    labs(x = "", y = "各生態系サービスを標準化した値")
+}
+
 # Get data ----
 # 京都市各区
 kWard <- c("右京区", "西京区", "北区", "上京区", "中京区", "下京区", "南区",  
@@ -409,26 +445,19 @@ ward.es.07.scale <- data.frame(ward = ward.es.07$ward) %>%
   cbind(apply(select(ward.es.07, -ward), 2, ScaleMinMax))
 ward.es.17.scale <- data.frame(ward = ward.es.17$ward) %>% 
   cbind(apply(select(ward.es.17, -ward), 2, ScaleMinMax))
+
 # 输出图片
-png(filename = "RProcData/Es_ward.png", width = 800, height = 2400, res = 200)
+png(filename = "RProcData/Es_ward_1.png", width = 800, height = 1200, res = 200)
 (
-  pivot_longer(ward.es.07.scale, cols = -ward, names_to = "es") %>% 
-    mutate(year = "2007") %>% 
-    rbind(pivot_longer(ward.es.17.scale, cols = -ward, names_to = "es") %>% 
-            mutate(year = "2017")) %>% 
-    subset(es != "nfix") %>%  # 漏洞：暂时去除固氮服务
-    mutate(es = factor(es, levels = kEcoSvs), 
-           ward = factor(ward, levels = kWard)) %>% 
-    ggplot() + 
-    geom_col(aes(x = ward, y = value, fill = year), position = "dodge") + 
-    scale_fill_manual(values = c("grey", "#E39EA1")) + 
-    facet_wrap(.~ es, ncol = 1) + 
-    theme_bw() + 
-    theme(axis.text.x = element_text(size = 12, angle = 90), 
-          axis.title.y = element_text(size = 14), 
-          axis.text.y = element_text(size = 12), 
-          legend.text = element_text(size = 14)) + 
-    labs(x = "", y = "生態系サービスにおける標準値")
+  GetBar(select(ward.es.07.scale, ward, rice, veg, cseq), 
+         select(ward.es.17.scale, ward, rice, veg, cseq))
+)
+dev.off()
+
+png(filename = "RProcData/Es_ward_2.png", width = 800, height = 1200, res = 200)
+(
+  GetBar(select(ward.es.07.scale, ward, cool, ha_flood, ta_flood), 
+         select(ward.es.17.scale, ward, cool, ha_flood, ta_flood))
 )
 dev.off()
 
@@ -444,10 +473,11 @@ for (i in 1:11) {
       ward.es.07.scale[i, kEcoSvs[which(!kEcoSvs %in% "nfix")]], 
       ward.es.17.scale[i, kEcoSvs[which(!kEcoSvs %in% "nfix")]]), 
     # 漏洞：手动输入各服务对应的日语，应更改kEcoSvs常量
-    vlabels = c("水稲収穫", "野菜収穫", "CO2吸収", "大気冷却", 
-                "水量調節(畑)", "水量調節(田)"), 
+    vlabels = c("水稲収穫量", "野菜収穫量", "年間CO2吸収", "クーリング効果", 
+                "透水量_畑", "貯水量_田"), 
     plty = c(1, 1), plwd = 2, 
-    pcol = c("red", "darkgreen")
+    pcol = c("grey40", "#E39EA1"), 
+    cglcol = "grey"
   )
   dev.off()
 }
